@@ -252,7 +252,7 @@ const APP_OVERRIDES: Override[] = [
 
 const OTHER_OVERRIDES: Override[] = [
     {
-        files: ['test/setup/*.ts'],
+        files: ['test/setup/*.ts', 'vitest.config*.ts', 'prisma.config.ts'],
         rules: { 'import/no-default-export': 'off' },
     },
     {
