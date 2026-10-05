@@ -1437,7 +1437,7 @@
             }
         },
         {
-            "files": ["src/main.ts", "src/worker.ts"],
+            "files": ["src/main.ts", "src/worker.ts", "src/seed.ts"],
             "rules": {
                 "no-restricted-imports": [
                     "error",
