@@ -1,6 +1,6 @@
 import type { ErrorStatuses } from '../shared/http/exception.filter.ts';
-import { PaginationErrorStatuses } from '../shared/http/pagination.ts';
+import { PAGINATION_ERROR_STATUSES } from '../shared/http/pagination.ts';
 
-export const errorStatuses: ErrorStatuses = {
-    ...PaginationErrorStatuses,
+export const ERROR_STATUSES: ErrorStatuses = {
+    ...PAGINATION_ERROR_STATUSES,
 };

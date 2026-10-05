@@ -74,7 +74,6 @@ const httpRequest = (line: LogLine): string => {
         .join('  ');
 };
 
-// Only our own frames: node_modules and node internals are noise locally.
 const stack = (error: unknown): string[] => {
     const value = (error as { stack?: unknown } | undefined)?.stack;
     if (typeof value !== 'string') {

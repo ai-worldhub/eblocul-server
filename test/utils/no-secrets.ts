@@ -9,9 +9,7 @@ const SECRET_PATTERNS: readonly (readonly [string, RegExp])[] = [
 ];
 
 export type SecretCheckOptions = {
-    // Keys whose values are the point of the endpoint, e.g. tokens on sign-in.
     allowKeys?: readonly string[];
-    // Environment values that must never leave the server, e.g. a bucket name.
     values?: readonly string[];
 };
 

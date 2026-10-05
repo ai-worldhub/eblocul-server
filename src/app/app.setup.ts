@@ -7,7 +7,7 @@ import {
     type OpenAPIObject,
     SwaggerModule,
 } from '@nestjs/swagger';
-import { errorStatuses } from './error-statuses.ts';
+import { ERROR_STATUSES } from './error-statuses.ts';
 import { AppExceptionFilter } from '../shared/http/exception.filter.ts';
 import { EventLogger } from '../shared/logging/event-logger.ts';
 import { toValidationException } from '../shared/http/validation.ts';
@@ -27,7 +27,7 @@ export const configureApp = (app: NestExpressApplication): void => {
         new AppExceptionFilter(
             app.get(HttpAdapterHost),
             app.get(EventLogger),
-            errorStatuses,
+            ERROR_STATUSES,
         ),
     );
 };

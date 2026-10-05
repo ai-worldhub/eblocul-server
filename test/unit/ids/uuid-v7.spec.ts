@@ -27,8 +27,6 @@ describe('UuidV7Ids', () => {
         expect(stamp).toBeLessThan(before + SECOND);
     });
 
-    // A thousand in a row land in the same millisecond or two: a generator
-    // without a sequence counter fails here.
     it('sorts in the order it was made, inside one millisecond as well', () => {
         const made = Array.from({ length: 1000 }, () => ids.next());
 

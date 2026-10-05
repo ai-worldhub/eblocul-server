@@ -41,7 +41,7 @@ const completedRequest = (
     userId: typeof req.user?.userId === 'string' ? req.user.userId : null,
 });
 
-const httpOptions: Options<AppRequest, ServerResponse> = {
+const HTTP_OPTIONS: Options<AppRequest, ServerResponse> = {
     messageKey: 'event',
     genReqId: requestIdOf,
     quietReqLogger: true,
@@ -85,8 +85,8 @@ export class AppLoggingModule {
                         return {
                             pinoHttp:
                                 stream === undefined
-                                    ? httpOptions
-                                    : [httpOptions, stream],
+                                    ? HTTP_OPTIONS
+                                    : [HTTP_OPTIONS, stream],
                         };
                     },
                 }),

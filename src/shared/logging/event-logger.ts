@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
-import type { LogEvents, LogValue } from './log-events.ts';
+import type { LogEvents } from './log-events.ts';
 
 const stackFrames = (error: Error): string | null => {
     const lines = error.stack?.split('\n');
@@ -41,12 +41,11 @@ export class EventLogger {
         fields: LogEvents[E],
         error?: Error,
     ): void {
-        const base = fields as Record<string, LogValue>;
         this._pino.error(
             error === undefined
-                ? base
+                ? fields
                 : {
-                      ...base,
+                      ...fields,
                       error: { type: error.name, stack: stackFrames(error) },
                   },
             event,

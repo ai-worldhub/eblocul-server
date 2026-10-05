@@ -19,7 +19,7 @@ export class PaginationError extends Error {
     }
 }
 
-export const PaginationErrorStatuses = {
+export const PAGINATION_ERROR_STATUSES = {
     INVALID_CURSOR: 400,
 } satisfies Record<PaginationError['code'], number>;
 

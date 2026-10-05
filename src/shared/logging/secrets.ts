@@ -38,4 +38,7 @@ const redact = (value: unknown, depth: number): unknown => {
 
 export const redactSecrets = (
     fields: Record<string, unknown>,
-): Record<string, unknown> => redact(fields, 0) as Record<string, unknown>;
+): Record<string, unknown> => {
+    const redacted = redact(fields, 0);
+    return isPlainObject(redacted) ? redacted : fields;
+};
