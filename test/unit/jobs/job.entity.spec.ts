@@ -5,6 +5,7 @@ import {
     leaseCheckIntervalMs,
     leaseNeedsRenewal,
 } from '../../../src/core/jobs/domain/job.entity.ts';
+import { PAYLOAD_MAX_BYTES } from '../../../src/core/jobs/domain/job-definition.ts';
 import type { RetryPolicy } from '../../../src/core/jobs/domain/retry-policy.ts';
 
 const NOW = new Date('2026-10-05T10:00:00.000Z');
@@ -17,16 +18,18 @@ const POLICY: RetryPolicy = {
 const after = (durationMs: number): Date =>
     new Date(NOW.getTime() + durationMs);
 
-const enqueued = (notBefore: Date | null = null): JobEntity =>
+const enqueued = (notBefore: Date | null = null, label = 'first'): JobEntity =>
     JobEntity.enqueue({
         id: 'job-1',
         kind: 'probe.work',
         class: 'p1',
-        payload: { label: 'first' },
+        payload: { label },
         dedupKey: null,
         notBefore,
         now: NOW,
     });
+
+const EMPTY_LABEL_BYTES = JSON.stringify({ label: '' }).length;
 
 const taken = (leaseId = 'lease-1'): JobEntity => {
     const job = enqueued();
@@ -52,6 +55,31 @@ describe('JobEntity', () => {
             availableAt: NOW,
             leaseExpiresAt: null,
         });
+    });
+
+    it('accepts a payload up to the limit and refuses a larger one', () => {
+        const fits = 'x'.repeat(PAYLOAD_MAX_BYTES - EMPTY_LABEL_BYTES);
+
+        expect(enqueued(null, fits).view().state).toBe('waiting');
+        expect(() => enqueued(null, `${fits}x`)).toThrow(
+            expect.objectContaining({
+                code: 'JOBS_PAYLOAD_TOO_LARGE',
+                details: {
+                    kind: 'probe.work',
+                    sizeBytes: PAYLOAD_MAX_BYTES + 1,
+                    maxBytes: PAYLOAD_MAX_BYTES,
+                },
+            }),
+        );
+    });
+
+    it('measures the payload in bytes, not in characters', () => {
+        const cyrillic = 'я'.repeat(PAYLOAD_MAX_BYTES / 2);
+
+        expect(cyrillic.length).toBeLessThan(PAYLOAD_MAX_BYTES);
+        expect(() => enqueued(null, cyrillic)).toThrow(
+            expect.objectContaining({ code: 'JOBS_PAYLOAD_TOO_LARGE' }),
+        );
     });
 
     it('hands out a copy of its state, not the state itself', () => {

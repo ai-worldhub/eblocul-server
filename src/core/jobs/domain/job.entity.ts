@@ -1,5 +1,9 @@
 import type { JobClass } from './job-class.ts';
-import type { JobPayload } from './job-definition.ts';
+import {
+    type JobPayload,
+    PAYLOAD_MAX_BYTES,
+    payloadSizeBytes,
+} from './job-definition.ts';
 import { JobsError } from './jobs.errors.ts';
 import { type RetryPolicy, retryDelayMs } from './retry-policy.ts';
 
@@ -46,6 +50,14 @@ export class JobEntity {
         notBefore: Date | null;
         now: Date;
     }): JobEntity {
+        const sizeBytes = payloadSizeBytes(input.payload);
+        if (sizeBytes > PAYLOAD_MAX_BYTES) {
+            throw new JobsError(
+                'JOBS_PAYLOAD_TOO_LARGE',
+                'Job payload is larger than the queue accepts',
+                { kind: input.kind, sizeBytes, maxBytes: PAYLOAD_MAX_BYTES },
+            );
+        }
         return new JobEntity({
             id: input.id,
             kind: input.kind,

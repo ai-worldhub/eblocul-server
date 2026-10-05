@@ -1,3 +1,4 @@
+import { PAYLOAD_MAX_BYTES } from '../../../src/core/jobs/domain/job-definition.ts';
 import { JobQueueService } from '../../../src/core/jobs/index.ts';
 import { Clock } from '../../../src/shared/clock/clock.service.ts';
 import { Transactions } from '../../../src/shared/db/transactions.service.ts';
@@ -65,6 +66,25 @@ describe('Jobs queue (e2e)', () => {
         ).rejects.toBeInstanceOf(Refused);
 
         expect(await testApp.db.job.count()).toBe(0);
+    });
+
+    it('refuses a payload over the limit and rolls the transaction back', async () => {
+        const userId = testApp.app.get(Ids).next();
+
+        await expect(
+            transactions().run(async (tx) => {
+                await tx.user.create({
+                    data: { id: userId },
+                    select: { id: true },
+                });
+                await queue().enqueue(tx, PROBE_JOB, {
+                    label: 'x'.repeat(PAYLOAD_MAX_BYTES),
+                });
+            }),
+        ).rejects.toMatchObject({ code: 'JOBS_PAYLOAD_TOO_LARGE' });
+
+        expect(await testApp.db.job.count()).toBe(0);
+        expect(await testApp.db.user.count({ where: { id: userId } })).toBe(0);
     });
 
     it('ignores a second job of the same kind with the same key', async () => {

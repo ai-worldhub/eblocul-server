@@ -3,6 +3,9 @@ import { JobsError } from './jobs.errors.ts';
 import type { RetryPolicy } from './retry-policy.ts';
 
 const KIND_PATTERN = /^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/;
+const KILOBYTE = 1024;
+
+export const PAYLOAD_MAX_BYTES = 64 * KILOBYTE;
 
 type JobPayloadValue =
     | string
@@ -13,6 +16,9 @@ type JobPayloadValue =
     | { [key: string]: JobPayloadValue };
 
 export type JobPayload = { [key: string]: JobPayloadValue };
+
+export const payloadSizeBytes = (payload: JobPayload): number =>
+    new TextEncoder().encode(JSON.stringify(payload)).length;
 
 export type JobDefinition<P extends JobPayload = JobPayload> = {
     readonly kind: string;
