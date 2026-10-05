@@ -56,10 +56,38 @@ export abstract class TicketRepository {
 
 ## Обработчики заданий
 
-- Задание принадлежит модулю, чья это работа. Его имя и поля объявлены в `application/<модуль>.jobs.ts`, обработчик — класс в `application/handlers/<задание>.handler.ts`.
-- Обработчик открыт через `index.ts` и внесён в общий список `src/app/job-handlers.ts`.
-- Механизм вводится вместе с модулем `jobs`; тогда же появится тест, что каждый `*.handler.ts` есть в списке.
-- В списке только импорты и массив классов. Ядро `jobs` имён чужих заданий не знает.
+- Задание принадлежит модулю, чья это работа. Оно объявлено в `application/<модуль>.jobs.ts` значением `defineJob`:
+  имя `<модуль>.<задание>`, класс и, если нужно, своя политика повторов. Тип полей — параметр `defineJob`.
+- Обработчик — класс в `application/handlers/<задание>.handler.ts`. Он наследует порт `JobHandler` модуля `jobs`
+  и держит объявление в поле `job`.
+- Обработчик — провайдер своего модуля, открыт через `index.ts` и внесён в общий список `src/app/job-handlers.ts`.
+- В списке только импорты и массив классов. Ядро `jobs` имён чужих заданий не знает:
+  список ему передаёт `src/app/worker.module.ts` через `JobsWorkerModule.register`.
+- Постановка — `JobQueueService.enqueue(tx, ОБЪЯВЛЕНИЕ, поля, { notBefore, dedupKey })` в транзакции изменения.
+  Ключ дедупликации действует внутри одного вида и только пока строка задания существует.
+- Обработчик получает поля и `run`: номер попытки, `signal` и `complete(tx)`.
+    - `signal` срабатывает, когда исполнитель останавливается или аренда потеряна; длинная работа его проверяет.
+    - `complete(tx)` снимает задание в транзакции результата. Без него задание снимается после возврата из обработчика.
+- Всю работу в одну транзакцию обработчик не заворачивает: транзакция живёт не дольше пяти секунд.
+- Исполнители работают в отдельном процессе с точкой входа `src/worker.ts`. Процесс API заданий не берёт.
+
+```ts
+export const TICKET_REOPENED_NOTICE = defineJob<{ ticketId: string }>({
+    kind: 'tickets.reopened_notice',
+    class: 'p1',
+});
+
+@Injectable()
+export class TicketReopenedNoticeHandler extends JobHandler<{
+    ticketId: string;
+}> {
+    readonly job = TICKET_REOPENED_NOTICE;
+
+    async handle(payload: { ticketId: string }, run: JobRun): Promise<void> {
+        await this._notices.send(payload.ticketId, run.signal);
+    }
+}
+```
 
 ## Обратная зависимость
 
@@ -76,9 +104,13 @@ export abstract class TicketRepository {
 - oxlint: `ports/` импортирует только `domain/`, `shared/` и `index.ts` ядра, без Nest, Prisma и `generated/`;
   `infrastructure/` не импортирует `application/`; `presentation/` и `domain/` не импортируют `ports/`.
 - Nest при старте: у каждого порта есть реализация.
+- `tsc`: поля при постановке и в обработчике совпадают с объявлением задания.
+- `test/unit/jobs/job-handlers-registry.spec.ts`: каждый обработчик из `*.handler.ts` есть в `src/app/job-handlers.ts`,
+  в списке нет лишнего и нет повторов.
+- Запуск исполнителя: обработчик из списка — провайдер какого-то модуля; два обработчика на один вид не стартуют.
 
 ## Не проверяется
 
 - Абстрактный класс для DI в `domain/`; реализация или логика в файле порта.
-- Логика в `app-ports.module.ts` и `job-handlers.ts`; обработчик, забытый в списке.
+- Логика в `app-ports.module.ts` и `job-handlers.ts`; имя задания с префиксом чужого модуля.
 - Имя метода порта, которое выдаёт технологию.
