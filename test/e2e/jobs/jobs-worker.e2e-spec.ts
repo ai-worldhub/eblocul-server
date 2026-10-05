@@ -380,6 +380,136 @@ describe('Jobs worker classes (e2e)', () => {
         expect(await worker.db.job.count()).toBe(0);
     });
 
+    it('refuses the result of an executor whose job another one has already finished', async () => {
+        const userId = worker.ids.next();
+        const gate = createGate();
+        const refused: unknown[] = [];
+        worker.probe.behaviour = async (_payload, run) => {
+            if (run.attempt > 1) {
+                return;
+            }
+            await gate.opened;
+            try {
+                await worker.transactions.run(async (tx) => {
+                    await tx.user.create({
+                        data: { id: userId },
+                        select: { id: true },
+                    });
+                    await run.complete(tx);
+                });
+            } catch (error) {
+                refused.push(error);
+                throw error;
+            }
+        };
+        await worker.enqueue(PROBE_JOB, 'overtaken');
+
+        const first = worker.runner.runNext(['p1']);
+        await waitFor(
+            () => Promise.resolve(worker.probe.runs.length === 1 ? true : null),
+            'the first executor to start',
+        );
+        worker.clock.advance(LEASE_MS);
+        expect(await worker.runner.runNext(['p1'])).toBe(true);
+        expect(await worker.db.job.count()).toBe(0);
+
+        gate.open();
+        await first;
+
+        expect(refused).toEqual([
+            expect.objectContaining({ code: 'JOBS_LEASE_LOST' }),
+        ]);
+        expect(await worker.db.user.count({ where: { id: userId } })).toBe(0);
+        expect(await worker.db.job.count()).toBe(0);
+    });
+
+    it('lets the handler complete the job twice in one transaction', async () => {
+        worker.probe.behaviour = (_payload, run) =>
+            worker.transactions.run(async (tx) => {
+                await run.complete(tx);
+                await run.complete(tx);
+            });
+        await worker.enqueue(PROBE_JOB, 'twice');
+
+        expect(await worker.runner.runNext(['p1'])).toBe(true);
+
+        expect(await worker.db.job.count()).toBe(0);
+        expect(worker.probe.runs).toHaveLength(1);
+    });
+
+    describe('with two jobs running', () => {
+        let gate: Gate;
+        let running: Promise<boolean>[];
+        let jobIds: string[];
+
+        beforeEach(async () => {
+            gate = createGate();
+            worker.probe.behaviour = () => gate.opened;
+            await worker.enqueue(PROBE_JOB, 'first');
+            await worker.enqueue(PROBE_JOB, 'second');
+            running = [
+                worker.runner.runNext(['p1']),
+                worker.runner.runNext(['p1']),
+            ];
+            await waitFor(
+                () =>
+                    Promise.resolve(
+                        worker.probe.runs.length === 2 ? true : null,
+                    ),
+                'both executors to start',
+            );
+            const jobs = await worker.db.job.findMany({
+                orderBy: { id: 'asc' },
+            });
+            jobIds = jobs.map((job) => job.id);
+        });
+
+        const finishBoth = async (): Promise<void> => {
+            worker.repository.refusedLocks.clear();
+            gate.open();
+            await Promise.all(running);
+        };
+
+        const jobAt = (index: number) =>
+            worker.db.job.findUniqueOrThrow({
+                where: { id: jobIds[index] ?? '' },
+            });
+
+        it('extends the other leases when one renewal fails', async () => {
+            worker.repository.refusedLocks.add(jobIds[0] ?? '');
+            worker.clock.advance(LEASE_MS - 1);
+
+            await worker.runner.renewLeases();
+
+            expect((await jobAt(0)).leaseExpiresAt).toEqual(
+                after(NOW, LEASE_MS),
+            );
+            expect((await jobAt(1)).leaseExpiresAt).toEqual(
+                after(NOW, LEASE_MS * 2 - 1),
+            );
+            await finishBoth();
+            expect(await worker.db.job.count()).toBe(0);
+        });
+
+        it('returns the other jobs when one cannot be returned on shutdown', async () => {
+            worker.repository.refusedLocks.add(jobIds[0] ?? '');
+            worker.runner.stopActive();
+
+            expect(await worker.runner.releaseActive()).toBe(1);
+
+            expect(await jobAt(0)).toMatchObject({
+                state: 'running',
+                attempts: 1,
+            });
+            expect(await jobAt(1)).toMatchObject({
+                state: 'waiting',
+                attempts: 0,
+                leaseId: null,
+            });
+            await finishBoth();
+        });
+    });
+
     it('does not take a job before its time', async () => {
         await worker.enqueue(PROBE_JOB, 'later', {
             notBefore: after(NOW, 1),

@@ -8,6 +8,7 @@ import {
     JobsWorkerModule,
 } from '../../src/core/jobs/index.ts';
 import type { EnqueueOptions } from '../../src/core/jobs/index.ts';
+import { JobRepository } from '../../src/core/jobs/ports/job.repository.ts';
 import { RetryJitter } from '../../src/core/jobs/ports/retry-jitter.port.ts';
 import { Clock } from '../../src/shared/clock/clock.service.ts';
 import { DbService } from '../../src/shared/db/db.service.ts';
@@ -21,6 +22,7 @@ import {
     ProbeHandlerDouble,
     type ProbePayload,
 } from './job-handler.double.ts';
+import { JobRepositoryDouble } from './job-repository.double.ts';
 import { RetryJitterDouble } from './retry-jitter.double.ts';
 
 export type JobWorker = {
@@ -29,6 +31,7 @@ export type JobWorker = {
     ids: Ids;
     transactions: Transactions;
     runner: JobRunnerService;
+    repository: JobRepositoryDouble;
     probe: JobHandlerDouble;
     barrier: JobHandlerDouble;
     enqueue: (
@@ -50,6 +53,7 @@ export const startJobWorker = async (
     const clock = new ClockDouble(options.now);
     const probe = new ProbeHandlerDouble();
     const barrier = new BarrierHandlerDouble();
+    const repository = new JobRepositoryDouble();
 
     const builder = Test.createTestingModule({
         imports: [
@@ -67,7 +71,9 @@ export const startJobWorker = async (
         .overrideProvider(Clock)
         .useValue(clock)
         .overrideProvider(RetryJitter)
-        .useValue(new RetryJitterDouble(0));
+        .useValue(new RetryJitterDouble(0))
+        .overrideProvider(JobRepository)
+        .useValue(repository);
     const moduleRef = await (
         options.loops === false
             ? builder.overrideProvider(JobWorkerService).useValue({})
@@ -88,6 +94,7 @@ export const startJobWorker = async (
         ids: moduleRef.get(Ids),
         transactions,
         runner: moduleRef.get(JobRunnerService),
+        repository,
         probe,
         barrier,
         enqueue: (job, label, enqueueOptions) =>

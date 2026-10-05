@@ -5,6 +5,7 @@ import type { Tx } from '../../../shared/db/tx.ts';
 import { Ids } from '../../../shared/ids/ids.service.ts';
 import { EventLogger } from '../../../shared/logging/event-logger.ts';
 import type { JobClass } from '../domain/job-class.ts';
+import { JobsError } from '../domain/jobs.errors.ts';
 import {
     type JobEntity,
     type JobSnapshot,
@@ -23,6 +24,8 @@ type ActiveRun = {
     readonly kind: string;
     readonly leaseId: string;
     readonly abort: AbortController;
+    readonly completedIn: WeakSet<Tx>;
+    hasCompleted: boolean;
     leaseExpiresAt: Date;
     isStopping: boolean;
 };
@@ -69,11 +72,17 @@ export class JobRunnerService {
     }
 
     async renewLeases(): Promise<void> {
-        for (const run of this._active.values()) {
-            if (leaseNeedsRenewal(run.leaseExpiresAt, this._clock.now())) {
-                await this._renew(run);
-            }
-        }
+        const now = this._clock.now();
+        const due = [...this._active.values()].filter((run) =>
+            leaseNeedsRenewal(run.leaseExpiresAt, now),
+        );
+        await Promise.all(
+            due.map((run) =>
+                this._contained(run, 'jobs.lease_renewal_failed', () =>
+                    this._renew(run),
+                ),
+            ),
+        );
     }
 
     stopActive(): void {
@@ -86,9 +95,13 @@ export class JobRunnerService {
 
     async releaseActive(): Promise<number> {
         const released = await Promise.all(
-            [...this._active.values()].map((run) => this._release(run)),
+            [...this._active.values()].map((run) =>
+                this._contained(run, 'jobs.job_release_failed', () =>
+                    this._release(run),
+                ),
+            ),
         );
-        return released.filter((isReleased) => isReleased).length;
+        return released.filter((isReleased) => isReleased === true).length;
     }
 
     private async _take(classes: readonly JobClass[]): Promise<Taken | null> {
@@ -124,6 +137,8 @@ export class JobRunnerService {
             kind: job.kind,
             leaseId,
             abort: new AbortController(),
+            completedIn: new WeakSet(),
+            hasCompleted: false,
             leaseExpiresAt: job.leaseExpiresAt ?? this._clock.now(),
             isStopping: this._isStopping,
         };
@@ -162,12 +177,21 @@ export class JobRunnerService {
     }
 
     private async _completeIn(tx: Tx, run: ActiveRun): Promise<void> {
+        if (run.completedIn.has(tx)) {
+            return;
+        }
         const job = await this._jobs.lockById(tx, run.jobId);
         if (job === null) {
-            return;
+            throw new JobsError(
+                'JOBS_LEASE_LOST',
+                'Job was finished by another executor',
+                { jobId: run.jobId },
+            );
         }
         job.complete(run.leaseId);
         await this._jobs.remove(tx, job);
+        run.completedIn.add(tx);
+        run.hasCompleted = true;
     }
 
     private async _finish(
@@ -179,7 +203,10 @@ export class JobRunnerService {
             locked.complete(run.leaseId);
             await this._jobs.remove(tx, locked);
         });
-        if (held.status === 'lost') {
+        if (
+            held.status === 'lost' ||
+            (held.status === 'gone' && !run.hasCompleted)
+        ) {
             this._leaseLost(run);
             return;
         }
@@ -267,6 +294,23 @@ export class JobRunnerService {
             }
             return { status: 'held', result: await work(tx, job) };
         });
+    }
+
+    private async _contained<T>(
+        run: ActiveRun,
+        event: 'jobs.lease_renewal_failed' | 'jobs.job_release_failed',
+        work: () => Promise<T>,
+    ): Promise<T | null> {
+        try {
+            return await work();
+        } catch (error) {
+            this._events.error(
+                event,
+                { jobId: run.jobId, kind: run.kind },
+                error instanceof Error ? error : undefined,
+            );
+            return null;
+        }
     }
 
     private _leaseLost(run: ActiveRun): void {
