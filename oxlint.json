@@ -1,6 +1,6 @@
 {
     "$schema": "./node_modules/oxlint/configuration_schema.json",
-    "plugins": ["typescript", "unicorn", "oxc", "import"],
+    "plugins": ["typescript", "unicorn", "oxc", "import", "node"],
     "ignorePatterns": ["src/generated/**"],
     "env": {
         "node": true
@@ -15,7 +15,10 @@
         "typescript/no-unsafe-member-access": "error",
         "typescript/no-unsafe-return": "error",
         "typescript/strict-boolean-expressions": "error",
+        "typescript/no-non-null-assertion": "error",
+        "typescript/consistent-type-definitions": ["error", "type"],
         "import/no-cycle": "error",
+        "import/no-default-export": "error",
         "no-console": "error",
         "func-style": ["error", "expression"],
         "prefer-arrow-callback": "error",
@@ -46,7 +49,7 @@
     },
     "overrides": [
         {
-            "files": ["src/*/domain/*.ts"],
+            "files": ["src/core/*/*.ts"],
             "rules": {
                 "no-restricted-imports": [
                     "error",
@@ -54,15 +57,56 @@
                         "patterns": [
                             {
                                 "group": [
-                                    "../../*/**",
-                                    "../../*.ts",
+                                    "../**",
+                                    "!../*/index.ts",
+                                    "!../../shared/**",
+                                    "!../../generated/**"
+                                ],
+                                "message": "From outside the module import only core/<module>/index.ts, shared/ and generated/; applied modules do not import each other, core does not import applied modules"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/core/*/domain/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../../**",
+                                    "../*.ts",
+                                    "../ports/**",
                                     "../application/**",
                                     "../infrastructure/**",
                                     "../presentation/**",
                                     "@nestjs/*",
                                     "@prisma/*"
                                 ],
-                                "message": "domain/ depends on nothing: no other modules, no other layers, no Nest, no Prisma"
+                                "message": "domain/ depends on nothing: no other modules, no other layers, no ports/, no shared/, no Nest, no Prisma"
                             }
                         ],
                         "paths": [
@@ -89,7 +133,7 @@
             }
         },
         {
-            "files": ["src/*/domain/*/*.ts"],
+            "files": ["src/core/*/domain/*/*.ts"],
             "rules": {
                 "no-restricted-imports": [
                     "error",
@@ -97,15 +141,16 @@
                         "patterns": [
                             {
                                 "group": [
-                                    "../../../*/**",
-                                    "../../../*.ts",
+                                    "../../../**",
+                                    "../../*.ts",
+                                    "../../ports/**",
                                     "../../application/**",
                                     "../../infrastructure/**",
                                     "../../presentation/**",
                                     "@nestjs/*",
                                     "@prisma/*"
                                 ],
-                                "message": "domain/ depends on nothing: no other modules, no other layers, no Nest, no Prisma"
+                                "message": "domain/ depends on nothing: no other modules, no other layers, no ports/, no shared/, no Nest, no Prisma"
                             }
                         ],
                         "paths": [
@@ -132,19 +177,128 @@
             }
         },
         {
-            "files": ["src/*/application/*.ts"],
+            "files": ["src/core/*/ports/*.ts"],
             "rules": {
                 "no-restricted-imports": [
                     "error",
                     {
                         "patterns": [
+                            {
+                                "group": [
+                                    "../../**",
+                                    "!../../*/index.ts",
+                                    "!../../../shared/**"
+                                ],
+                                "message": "From outside the module import only core/<module>/index.ts, shared/ and generated/; applied modules do not import each other, core does not import applied modules"
+                            },
+                            {
+                                "group": [
+                                    "../*.ts",
+                                    "../application/**",
+                                    "../infrastructure/**",
+                                    "../presentation/**",
+                                    "@nestjs/*",
+                                    "@prisma/*"
+                                ],
+                                "message": "ports/ holds abstract classes only: it uses domain/, shared/ and core index.ts, and no other layer, no Nest, no Prisma"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/core/*/ports/*/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../../../**",
+                                    "!../../../*/index.ts",
+                                    "!../../../../shared/**"
+                                ],
+                                "message": "From outside the module import only core/<module>/index.ts, shared/ and generated/; applied modules do not import each other, core does not import applied modules"
+                            },
+                            {
+                                "group": [
+                                    "../../*.ts",
+                                    "../../application/**",
+                                    "../../infrastructure/**",
+                                    "../../presentation/**",
+                                    "@nestjs/*",
+                                    "@prisma/*"
+                                ],
+                                "message": "ports/ holds abstract classes only: it uses domain/, shared/ and core index.ts, and no other layer, no Nest, no Prisma"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/core/*/application/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../../**",
+                                    "!../../*/index.ts",
+                                    "!../../../shared/**",
+                                    "!../../../generated/**"
+                                ],
+                                "message": "From outside the module import only core/<module>/index.ts, shared/ and generated/; applied modules do not import each other, core does not import applied modules"
+                            },
                             {
                                 "group": [
                                     "../infrastructure/**",
                                     "!../infrastructure/*.select.ts",
                                     "../presentation/**"
                                 ],
-                                "message": "application/ uses domain/ and infrastructure/*.select.ts only, not other infrastructure/ or presentation/"
+                                "message": "application/ uses domain/, ports/ and infrastructure/*.select.ts, not other infrastructure/ or presentation/"
                             }
                         ],
                         "paths": [
@@ -164,6 +318,34 @@
                             {
                                 "name": "pino-http",
                                 "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": [
+                                    "HttpException",
+                                    "BadRequestException",
+                                    "UnauthorizedException",
+                                    "ForbiddenException",
+                                    "NotFoundException",
+                                    "MethodNotAllowedException",
+                                    "NotAcceptableException",
+                                    "RequestTimeoutException",
+                                    "ConflictException",
+                                    "GoneException",
+                                    "PreconditionFailedException",
+                                    "PayloadTooLargeException",
+                                    "UnsupportedMediaTypeException",
+                                    "UnprocessableEntityException",
+                                    "ImATeapotException",
+                                    "MisdirectedException",
+                                    "InternalServerErrorException",
+                                    "NotImplementedException",
+                                    "BadGatewayException",
+                                    "ServiceUnavailableException",
+                                    "GatewayTimeoutException",
+                                    "HttpVersionNotSupportedException"
+                                ],
+                                "message": "application/ and infrastructure/ throw domain errors: HttpException belongs to presentation/"
                             }
                         ]
                     }
@@ -171,19 +353,28 @@
             }
         },
         {
-            "files": ["src/*/application/*/*.ts"],
+            "files": ["src/core/*/application/*/*.ts"],
             "rules": {
                 "no-restricted-imports": [
                     "error",
                     {
                         "patterns": [
+                            {
+                                "group": [
+                                    "../../../**",
+                                    "!../../../*/index.ts",
+                                    "!../../../../shared/**",
+                                    "!../../../../generated/**"
+                                ],
+                                "message": "From outside the module import only core/<module>/index.ts, shared/ and generated/; applied modules do not import each other, core does not import applied modules"
+                            },
                             {
                                 "group": [
                                     "../../infrastructure/**",
                                     "!../../infrastructure/*.select.ts",
                                     "../../presentation/**"
                                 ],
-                                "message": "application/ uses domain/ and infrastructure/*.select.ts only, not other infrastructure/ or presentation/"
+                                "message": "application/ uses domain/, ports/ and infrastructure/*.select.ts, not other infrastructure/ or presentation/"
                             }
                         ],
                         "paths": [
@@ -203,6 +394,34 @@
                             {
                                 "name": "pino-http",
                                 "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": [
+                                    "HttpException",
+                                    "BadRequestException",
+                                    "UnauthorizedException",
+                                    "ForbiddenException",
+                                    "NotFoundException",
+                                    "MethodNotAllowedException",
+                                    "NotAcceptableException",
+                                    "RequestTimeoutException",
+                                    "ConflictException",
+                                    "GoneException",
+                                    "PreconditionFailedException",
+                                    "PayloadTooLargeException",
+                                    "UnsupportedMediaTypeException",
+                                    "UnprocessableEntityException",
+                                    "ImATeapotException",
+                                    "MisdirectedException",
+                                    "InternalServerErrorException",
+                                    "NotImplementedException",
+                                    "BadGatewayException",
+                                    "ServiceUnavailableException",
+                                    "GatewayTimeoutException",
+                                    "HttpVersionNotSupportedException"
+                                ],
+                                "message": "application/ and infrastructure/ throw domain errors: HttpException belongs to presentation/"
                             }
                         ]
                     }
@@ -210,18 +429,27 @@
             }
         },
         {
-            "files": ["src/*/infrastructure/*.ts"],
+            "files": ["src/core/*/infrastructure/*.ts"],
             "rules": {
                 "no-restricted-imports": [
                     "error",
                     {
                         "patterns": [
+                            {
+                                "group": [
+                                    "../../**",
+                                    "!../../*/index.ts",
+                                    "!../../../shared/**",
+                                    "!../../../generated/**"
+                                ],
+                                "message": "From outside the module import only core/<module>/index.ts, shared/ and generated/; applied modules do not import each other, core does not import applied modules"
+                            },
                             {
                                 "group": [
                                     "../application/**",
                                     "../presentation/**"
                                 ],
-                                "message": "infrastructure/ implements domain/ and must not use application/ or presentation/"
+                                "message": "infrastructure/ implements ports/ and must not use application/ or presentation/"
                             }
                         ],
                         "paths": [
@@ -241,6 +469,34 @@
                             {
                                 "name": "pino-http",
                                 "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": [
+                                    "HttpException",
+                                    "BadRequestException",
+                                    "UnauthorizedException",
+                                    "ForbiddenException",
+                                    "NotFoundException",
+                                    "MethodNotAllowedException",
+                                    "NotAcceptableException",
+                                    "RequestTimeoutException",
+                                    "ConflictException",
+                                    "GoneException",
+                                    "PreconditionFailedException",
+                                    "PayloadTooLargeException",
+                                    "UnsupportedMediaTypeException",
+                                    "UnprocessableEntityException",
+                                    "ImATeapotException",
+                                    "MisdirectedException",
+                                    "InternalServerErrorException",
+                                    "NotImplementedException",
+                                    "BadGatewayException",
+                                    "ServiceUnavailableException",
+                                    "GatewayTimeoutException",
+                                    "HttpVersionNotSupportedException"
+                                ],
+                                "message": "application/ and infrastructure/ throw domain errors: HttpException belongs to presentation/"
                             }
                         ]
                     }
@@ -248,18 +504,27 @@
             }
         },
         {
-            "files": ["src/*/infrastructure/*/*.ts"],
+            "files": ["src/core/*/infrastructure/*/*.ts"],
             "rules": {
                 "no-restricted-imports": [
                     "error",
                     {
                         "patterns": [
+                            {
+                                "group": [
+                                    "../../../**",
+                                    "!../../../*/index.ts",
+                                    "!../../../../shared/**",
+                                    "!../../../../generated/**"
+                                ],
+                                "message": "From outside the module import only core/<module>/index.ts, shared/ and generated/; applied modules do not import each other, core does not import applied modules"
+                            },
                             {
                                 "group": [
                                     "../../application/**",
                                     "../../presentation/**"
                                 ],
-                                "message": "infrastructure/ implements domain/ and must not use application/ or presentation/"
+                                "message": "infrastructure/ implements ports/ and must not use application/ or presentation/"
                             }
                         ],
                         "paths": [
@@ -279,6 +544,34 @@
                             {
                                 "name": "pino-http",
                                 "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": [
+                                    "HttpException",
+                                    "BadRequestException",
+                                    "UnauthorizedException",
+                                    "ForbiddenException",
+                                    "NotFoundException",
+                                    "MethodNotAllowedException",
+                                    "NotAcceptableException",
+                                    "RequestTimeoutException",
+                                    "ConflictException",
+                                    "GoneException",
+                                    "PreconditionFailedException",
+                                    "PayloadTooLargeException",
+                                    "UnsupportedMediaTypeException",
+                                    "UnprocessableEntityException",
+                                    "ImATeapotException",
+                                    "MisdirectedException",
+                                    "InternalServerErrorException",
+                                    "NotImplementedException",
+                                    "BadGatewayException",
+                                    "ServiceUnavailableException",
+                                    "GatewayTimeoutException",
+                                    "HttpVersionNotSupportedException"
+                                ],
+                                "message": "application/ and infrastructure/ throw domain errors: HttpException belongs to presentation/"
                             }
                         ]
                     }
@@ -286,7 +579,7 @@
             }
         },
         {
-            "files": ["src/*/presentation/*.ts"],
+            "files": ["src/core/*/presentation/*.ts"],
             "rules": {
                 "no-restricted-imports": [
                     "error",
@@ -294,10 +587,20 @@
                         "patterns": [
                             {
                                 "group": [
+                                    "../../**",
+                                    "!../../*/index.ts",
+                                    "!../../../shared/**",
+                                    "!../../../generated/**"
+                                ],
+                                "message": "From outside the module import only core/<module>/index.ts, shared/ and generated/; applied modules do not import each other, core does not import applied modules"
+                            },
+                            {
+                                "group": [
+                                    "../ports/**",
                                     "../infrastructure/**",
                                     "!../infrastructure/*.select.ts"
                                 ],
-                                "message": "presentation/ talks to application/ and uses infrastructure/*.select.ts only"
+                                "message": "presentation/ talks to application/ and uses infrastructure/*.select.ts only, never ports/"
                             }
                         ],
                         "paths": [
@@ -324,7 +627,7 @@
             }
         },
         {
-            "files": ["src/*/presentation/*/*.ts"],
+            "files": ["src/core/*/presentation/*/*.ts"],
             "rules": {
                 "no-restricted-imports": [
                     "error",
@@ -332,10 +635,646 @@
                         "patterns": [
                             {
                                 "group": [
+                                    "../../../**",
+                                    "!../../../*/index.ts",
+                                    "!../../../../shared/**",
+                                    "!../../../../generated/**"
+                                ],
+                                "message": "From outside the module import only core/<module>/index.ts, shared/ and generated/; applied modules do not import each other, core does not import applied modules"
+                            },
+                            {
+                                "group": [
+                                    "../../ports/**",
                                     "../../infrastructure/**",
                                     "!../../infrastructure/*.select.ts"
                                 ],
-                                "message": "presentation/ talks to application/ and uses infrastructure/*.select.ts only"
+                                "message": "presentation/ talks to application/ and uses infrastructure/*.select.ts only, never ports/"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/modules/*/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../**",
+                                    "!../../core/*/index.ts",
+                                    "!../../shared/**",
+                                    "!../../generated/**"
+                                ],
+                                "message": "From outside the module import only core/<module>/index.ts, shared/ and generated/; applied modules do not import each other, core does not import applied modules"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/modules/*/domain/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../../**",
+                                    "../*.ts",
+                                    "../ports/**",
+                                    "../application/**",
+                                    "../infrastructure/**",
+                                    "../presentation/**",
+                                    "@nestjs/*",
+                                    "@prisma/*"
+                                ],
+                                "message": "domain/ depends on nothing: no other modules, no other layers, no ports/, no shared/, no Nest, no Prisma"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/modules/*/domain/*/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../../../**",
+                                    "../../*.ts",
+                                    "../../ports/**",
+                                    "../../application/**",
+                                    "../../infrastructure/**",
+                                    "../../presentation/**",
+                                    "@nestjs/*",
+                                    "@prisma/*"
+                                ],
+                                "message": "domain/ depends on nothing: no other modules, no other layers, no ports/, no shared/, no Nest, no Prisma"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/modules/*/ports/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../../**",
+                                    "!../../../core/*/index.ts",
+                                    "!../../../shared/**"
+                                ],
+                                "message": "From outside the module import only core/<module>/index.ts, shared/ and generated/; applied modules do not import each other, core does not import applied modules"
+                            },
+                            {
+                                "group": [
+                                    "../*.ts",
+                                    "../application/**",
+                                    "../infrastructure/**",
+                                    "../presentation/**",
+                                    "@nestjs/*",
+                                    "@prisma/*"
+                                ],
+                                "message": "ports/ holds abstract classes only: it uses domain/, shared/ and core index.ts, and no other layer, no Nest, no Prisma"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/modules/*/ports/*/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../../../**",
+                                    "!../../../../core/*/index.ts",
+                                    "!../../../../shared/**"
+                                ],
+                                "message": "From outside the module import only core/<module>/index.ts, shared/ and generated/; applied modules do not import each other, core does not import applied modules"
+                            },
+                            {
+                                "group": [
+                                    "../../*.ts",
+                                    "../../application/**",
+                                    "../../infrastructure/**",
+                                    "../../presentation/**",
+                                    "@nestjs/*",
+                                    "@prisma/*"
+                                ],
+                                "message": "ports/ holds abstract classes only: it uses domain/, shared/ and core index.ts, and no other layer, no Nest, no Prisma"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/modules/*/application/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../../**",
+                                    "!../../../core/*/index.ts",
+                                    "!../../../shared/**",
+                                    "!../../../generated/**"
+                                ],
+                                "message": "From outside the module import only core/<module>/index.ts, shared/ and generated/; applied modules do not import each other, core does not import applied modules"
+                            },
+                            {
+                                "group": [
+                                    "../infrastructure/**",
+                                    "!../infrastructure/*.select.ts",
+                                    "../presentation/**"
+                                ],
+                                "message": "application/ uses domain/, ports/ and infrastructure/*.select.ts, not other infrastructure/ or presentation/"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": [
+                                    "HttpException",
+                                    "BadRequestException",
+                                    "UnauthorizedException",
+                                    "ForbiddenException",
+                                    "NotFoundException",
+                                    "MethodNotAllowedException",
+                                    "NotAcceptableException",
+                                    "RequestTimeoutException",
+                                    "ConflictException",
+                                    "GoneException",
+                                    "PreconditionFailedException",
+                                    "PayloadTooLargeException",
+                                    "UnsupportedMediaTypeException",
+                                    "UnprocessableEntityException",
+                                    "ImATeapotException",
+                                    "MisdirectedException",
+                                    "InternalServerErrorException",
+                                    "NotImplementedException",
+                                    "BadGatewayException",
+                                    "ServiceUnavailableException",
+                                    "GatewayTimeoutException",
+                                    "HttpVersionNotSupportedException"
+                                ],
+                                "message": "application/ and infrastructure/ throw domain errors: HttpException belongs to presentation/"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/modules/*/application/*/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../../../**",
+                                    "!../../../../core/*/index.ts",
+                                    "!../../../../shared/**",
+                                    "!../../../../generated/**"
+                                ],
+                                "message": "From outside the module import only core/<module>/index.ts, shared/ and generated/; applied modules do not import each other, core does not import applied modules"
+                            },
+                            {
+                                "group": [
+                                    "../../infrastructure/**",
+                                    "!../../infrastructure/*.select.ts",
+                                    "../../presentation/**"
+                                ],
+                                "message": "application/ uses domain/, ports/ and infrastructure/*.select.ts, not other infrastructure/ or presentation/"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": [
+                                    "HttpException",
+                                    "BadRequestException",
+                                    "UnauthorizedException",
+                                    "ForbiddenException",
+                                    "NotFoundException",
+                                    "MethodNotAllowedException",
+                                    "NotAcceptableException",
+                                    "RequestTimeoutException",
+                                    "ConflictException",
+                                    "GoneException",
+                                    "PreconditionFailedException",
+                                    "PayloadTooLargeException",
+                                    "UnsupportedMediaTypeException",
+                                    "UnprocessableEntityException",
+                                    "ImATeapotException",
+                                    "MisdirectedException",
+                                    "InternalServerErrorException",
+                                    "NotImplementedException",
+                                    "BadGatewayException",
+                                    "ServiceUnavailableException",
+                                    "GatewayTimeoutException",
+                                    "HttpVersionNotSupportedException"
+                                ],
+                                "message": "application/ and infrastructure/ throw domain errors: HttpException belongs to presentation/"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/modules/*/infrastructure/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../../**",
+                                    "!../../../core/*/index.ts",
+                                    "!../../../shared/**",
+                                    "!../../../generated/**"
+                                ],
+                                "message": "From outside the module import only core/<module>/index.ts, shared/ and generated/; applied modules do not import each other, core does not import applied modules"
+                            },
+                            {
+                                "group": [
+                                    "../application/**",
+                                    "../presentation/**"
+                                ],
+                                "message": "infrastructure/ implements ports/ and must not use application/ or presentation/"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": [
+                                    "HttpException",
+                                    "BadRequestException",
+                                    "UnauthorizedException",
+                                    "ForbiddenException",
+                                    "NotFoundException",
+                                    "MethodNotAllowedException",
+                                    "NotAcceptableException",
+                                    "RequestTimeoutException",
+                                    "ConflictException",
+                                    "GoneException",
+                                    "PreconditionFailedException",
+                                    "PayloadTooLargeException",
+                                    "UnsupportedMediaTypeException",
+                                    "UnprocessableEntityException",
+                                    "ImATeapotException",
+                                    "MisdirectedException",
+                                    "InternalServerErrorException",
+                                    "NotImplementedException",
+                                    "BadGatewayException",
+                                    "ServiceUnavailableException",
+                                    "GatewayTimeoutException",
+                                    "HttpVersionNotSupportedException"
+                                ],
+                                "message": "application/ and infrastructure/ throw domain errors: HttpException belongs to presentation/"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/modules/*/infrastructure/*/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../../../**",
+                                    "!../../../../core/*/index.ts",
+                                    "!../../../../shared/**",
+                                    "!../../../../generated/**"
+                                ],
+                                "message": "From outside the module import only core/<module>/index.ts, shared/ and generated/; applied modules do not import each other, core does not import applied modules"
+                            },
+                            {
+                                "group": [
+                                    "../../application/**",
+                                    "../../presentation/**"
+                                ],
+                                "message": "infrastructure/ implements ports/ and must not use application/ or presentation/"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": [
+                                    "HttpException",
+                                    "BadRequestException",
+                                    "UnauthorizedException",
+                                    "ForbiddenException",
+                                    "NotFoundException",
+                                    "MethodNotAllowedException",
+                                    "NotAcceptableException",
+                                    "RequestTimeoutException",
+                                    "ConflictException",
+                                    "GoneException",
+                                    "PreconditionFailedException",
+                                    "PayloadTooLargeException",
+                                    "UnsupportedMediaTypeException",
+                                    "UnprocessableEntityException",
+                                    "ImATeapotException",
+                                    "MisdirectedException",
+                                    "InternalServerErrorException",
+                                    "NotImplementedException",
+                                    "BadGatewayException",
+                                    "ServiceUnavailableException",
+                                    "GatewayTimeoutException",
+                                    "HttpVersionNotSupportedException"
+                                ],
+                                "message": "application/ and infrastructure/ throw domain errors: HttpException belongs to presentation/"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/modules/*/presentation/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../../**",
+                                    "!../../../core/*/index.ts",
+                                    "!../../../shared/**",
+                                    "!../../../generated/**"
+                                ],
+                                "message": "From outside the module import only core/<module>/index.ts, shared/ and generated/; applied modules do not import each other, core does not import applied modules"
+                            },
+                            {
+                                "group": [
+                                    "../ports/**",
+                                    "../infrastructure/**",
+                                    "!../infrastructure/*.select.ts"
+                                ],
+                                "message": "presentation/ talks to application/ and uses infrastructure/*.select.ts only, never ports/"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/modules/*/presentation/*/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../../../**",
+                                    "!../../../../core/*/index.ts",
+                                    "!../../../../shared/**",
+                                    "!../../../../generated/**"
+                                ],
+                                "message": "From outside the module import only core/<module>/index.ts, shared/ and generated/; applied modules do not import each other, core does not import applied modules"
+                            },
+                            {
+                                "group": [
+                                    "../../ports/**",
+                                    "../../infrastructure/**",
+                                    "!../../infrastructure/*.select.ts"
+                                ],
+                                "message": "presentation/ talks to application/ and uses infrastructure/*.select.ts only, never ports/"
                             }
                         ],
                         "paths": [
@@ -369,8 +1308,8 @@
                     {
                         "patterns": [
                             {
-                                "group": ["../../*/**"],
-                                "message": "shared/ imports nothing outside shared/: the direction is app -> domains -> shared"
+                                "group": ["../../*/**", "!../../generated/**"],
+                                "message": "shared/ imports nothing outside shared/ and generated/: the direction is app -> modules -> core -> shared"
                             }
                         ],
                         "paths": [
@@ -404,8 +1343,11 @@
                     {
                         "patterns": [
                             {
-                                "group": ["../../../*/**"],
-                                "message": "shared/ imports nothing outside shared/: the direction is app -> domains -> shared"
+                                "group": [
+                                    "../../../*/**",
+                                    "!../../../generated/**"
+                                ],
+                                "message": "shared/ imports nothing outside shared/ and generated/: the direction is app -> modules -> core -> shared"
                             }
                         ],
                         "paths": [
@@ -439,14 +1381,54 @@
                     {
                         "patterns": [
                             {
-                                "group": ["../../*/**"],
-                                "message": "shared/ imports nothing outside shared/: the direction is app -> domains -> shared"
+                                "group": ["../../*/**", "!../../generated/**"],
+                                "message": "shared/ imports nothing outside shared/ and generated/: the direction is app -> modules -> core -> shared"
                             }
                         ],
                         "paths": [
                             {
                                 "name": "@nestjs/common",
                                 "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/app/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../core/*/**",
+                                    "../modules/*/**",
+                                    "!../core/*/index.ts",
+                                    "!../modules/*/index.ts"
+                                ],
+                                "message": "app/ wires modules through their index.ts only"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
                                 "message": "Log through EventLogger from src/shared/logging"
                             }
                         ]
@@ -469,6 +1451,42 @@
                         ]
                     }
                 ]
+            }
+        },
+        {
+            "files": ["test/setup/*.ts"],
+            "rules": {
+                "import/no-default-export": "off"
+            }
+        },
+        {
+            "files": ["**/log-events.ts", "**/*.log-events.ts"],
+            "rules": {
+                "typescript/consistent-type-definitions": "off"
+            }
+        },
+        {
+            "files": ["test/e2e/**/*.ts"],
+            "rules": {
+                "no-restricted-properties": [
+                    "error",
+                    {
+                        "property": "body",
+                        "message": "Read the body through responseBody from test/utils/response-body.ts: it checks the answer for secrets"
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/**/*.ts"],
+            "rules": {
+                "node/no-process-env": "error"
+            }
+        },
+        {
+            "files": ["src/shared/configs/*.ts"],
+            "rules": {
+                "node/no-process-env": "off"
             }
         }
     ]
