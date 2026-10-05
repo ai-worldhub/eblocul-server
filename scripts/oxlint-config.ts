@@ -33,6 +33,8 @@ const PRESENTATION_MESSAGE =
 const SHARED_MESSAGE =
     'shared/ imports nothing outside shared/ and generated/: the direction is app -> modules -> core -> shared';
 const APP_MESSAGE = 'app/ wires modules through their index.ts only';
+const TRANSACTION_MESSAGE =
+    'Open a transaction through Transactions.run from src/shared/db: timeouts and session settings live there';
 const BODY_MESSAGE =
     'Read the body through responseBody from test/utils/response-body.ts: it checks the answer for secrets';
 
@@ -268,11 +270,21 @@ const OTHER_OVERRIDES: Override[] = [
     },
     {
         files: ['src/**/*.ts'],
-        rules: { 'node/no-process-env': 'error' },
+        rules: {
+            'node/no-process-env': 'error',
+            'no-restricted-properties': [
+                'error',
+                { property: '$transaction', message: TRANSACTION_MESSAGE },
+            ],
+        },
     },
     {
         files: ['src/shared/configs/*.ts'],
         rules: { 'node/no-process-env': 'off' },
+    },
+    {
+        files: ['src/shared/db/*.ts'],
+        rules: { 'no-restricted-properties': 'off' },
     },
 ];
 
