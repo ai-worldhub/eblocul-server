@@ -12,20 +12,20 @@ import {
     validateSync,
 } from 'class-validator';
 
-const Environments = ['lab', 'production', 'e2e'] as const;
-export type Environment = (typeof Environments)[number];
+const ENVIRONMENTS = ['lab', 'production', 'e2e'] as const;
+export type Environment = (typeof ENVIRONMENTS)[number];
 
-const LogFormats = ['json', 'pretty'] as const;
-type LogFormat = (typeof LogFormats)[number];
+const LOG_FORMATS = ['json', 'pretty'] as const;
+type LogFormat = (typeof LOG_FORMATS)[number];
 
-const Switches = ['on', 'off'] as const;
-type Switch = (typeof Switches)[number];
+const SWITCHES = ['on', 'off'] as const;
+type Switch = (typeof SWITCHES)[number];
 
 const RELAY_INTERVAL_MAX_SECONDS = 3600;
 const SECRET_LENGTH = 32;
 
 export class EnvironmentVariables {
-    @IsIn(Environments)
+    @IsIn(ENVIRONMENTS)
     NODE_ENV: Environment;
 
     @IsInt()
@@ -33,10 +33,10 @@ export class EnvironmentVariables {
     @Max(65535)
     SERVER_PORT: number = 3000;
 
-    @IsIn(LogFormats)
+    @IsIn(LOG_FORMATS)
     LOG_FORMAT: LogFormat = 'json';
 
-    @IsIn(Switches)
+    @IsIn(SWITCHES)
     JOBS_SCHEDULE: Switch = 'on';
 
     @IsInt()

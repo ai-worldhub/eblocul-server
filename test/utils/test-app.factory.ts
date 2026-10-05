@@ -4,7 +4,7 @@ import type { Server } from 'node:http';
 import request from 'supertest';
 import { AppModule } from '../../src/app/app.module.ts';
 import { configureApp } from '../../src/app/app.setup.ts';
-import { DbService } from '../../src/db/db.service.ts';
+import { DbService } from '../../src/shared/db/db.service.ts';
 
 export type TestApp = {
     app: NestExpressApplication<Server>;
@@ -16,9 +16,6 @@ export type TestAppOverrides = (
     builder: TestingModuleBuilder,
 ) => TestingModuleBuilder;
 
-// Listen once, on 127.0.0.1, and hand supertest a URL. Given a server that is
-// not listening, supertest binds the wildcard address on a port of its own for
-// every request, and a request can then land on another process.
 const baseUrlOf = (app: NestExpressApplication<Server>): string => {
     const address = app.getHttpServer().address();
     if (address === null || typeof address === 'string') {

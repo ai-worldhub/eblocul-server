@@ -1,4 +1,4 @@
-import type { DbService } from '../../src/db/db.service.ts';
+import type { DbService } from '../../src/shared/db/db.service.ts';
 
 export const cleanDatabase = async (db: DbService): Promise<void> => {
     if (process.env['NODE_ENV'] !== 'e2e') {
