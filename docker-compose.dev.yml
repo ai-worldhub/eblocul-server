@@ -1,0 +1,15 @@
+name: eblocul-dev
+
+services:
+    mailpit:
+        image: docker.io/axllent/mailpit@sha256:74d609a42ec279aa63c6b4622a6fa9b5408d1ad5b1d76a1c4be40a265ce0863d
+        container_name: eblocul-dev-mailpit
+        restart: unless-stopped
+        read_only: true
+        environment:
+            MP_MAX_MESSAGES: '500'
+        ports:
+            - '127.0.0.1:1025:1025'
+            - '127.0.0.1:8025:8025'
+        tmpfs:
+            - /tmp
