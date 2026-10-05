@@ -1480,13 +1480,26 @@
         {
             "files": ["src/**/*.ts"],
             "rules": {
-                "node/no-process-env": "error"
+                "node/no-process-env": "error",
+                "no-restricted-properties": [
+                    "error",
+                    {
+                        "property": "$transaction",
+                        "message": "Open a transaction through Transactions.run from src/shared/db: timeouts and session settings live there"
+                    }
+                ]
             }
         },
         {
             "files": ["src/shared/configs/*.ts"],
             "rules": {
                 "node/no-process-env": "off"
+            }
+        },
+        {
+            "files": ["src/shared/db/*.ts"],
+            "rules": {
+                "no-restricted-properties": "off"
             }
         }
     ]

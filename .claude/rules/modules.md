@@ -50,7 +50,7 @@ export { MEMBERSHIP_ERROR_STATUSES } from './presentation/membership.error-statu
 - Обработчик задания идемпотентен: доставка — «не менее одного раза».
 
 ```ts
-return this._db.$transaction(async (tx) => {
+return this._transactions.run(async (tx) => {
     const ticket = await this._tickets.lockById(tx, ticketId);
     ticket.reopen(this._clock.now());
     await this._tickets.save(tx, ticket);
