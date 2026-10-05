@@ -19,6 +19,14 @@ paths:
 
 У каждой модели есть `@@map`, у каждого поля из двух слов — `@map`. Сырой SQL пишется без кавычек.
 
+## Схема PostgreSQL
+
+- У каждого модуля своя схема PostgreSQL. Её имя совпадает с именем файла `prisma/schema/<модуль>.prisma`.
+- У каждой модели и каждого enum стоит `@@schema("<модуль>")` — последней строкой, после `@@map`.
+- Новая схема вносится в список `schemas` в `prisma/schema/base.prisma`.
+- Таблица `users` временно остаётся в `public`: её файл назван в списке `PUBLIC_SCHEMA_FILES` теста соглашений.
+- В сыром SQL таблица и тип названы вместе со схемой: `jobs.jobs`, `jobs.job_class`.
+
 ## Типы
 
 - **Id** — `String @id @db.Uuid`, без `@default`. Значение приходит из `Ids`.
@@ -47,7 +55,7 @@ paths:
 
 ## Порядок в модели
 
-Id, ключи связей, данные, время; пустая строка; связи; пустая строка; `@@index`, `@@unique`, `@@map`.
+Id, ключи связей, данные, время; пустая строка; связи; пустая строка; `@@index`, `@@unique`, `@@map`, `@@schema`.
 
 ```prisma
 enum TicketState {
@@ -56,6 +64,7 @@ enum TicketState {
   closed
 
   @@map("ticket_state")
+  @@schema("tickets")
 }
 
 model Ticket {
@@ -71,18 +80,19 @@ model Ticket {
 
   @@index([unitId, createdAt, id])
   @@map("tickets")
+  @@schema("tickets")
 }
 ```
 
 ## Ждёт архитектуры
 
 - Общие поля каждой таблицы с данными дома: корень комплекса, узел-владелец.
-- Схема PostgreSQL на модуль (`@@schema`).
 
 ## Проверяется автоматически
 
 - `test/unit/schema/schema-conventions.spec.ts` читает файлы схемы:
     - у модели и enum есть `@@map` в snake_case, у поля из двух слов — `@map`;
+    - у модели и enum есть `@@schema` с именем файла схемы; для файлов из `PUBLIC_SCHEMA_FILES` — `public`;
     - значения enum в нижнем snake_case;
     - id — `@db.Uuid` без `@default`;
     - у `DateTime` стоит `@db.Timestamptz`, нет `@default(now())` и `@updatedAt`;
@@ -98,3 +108,4 @@ model Ticket {
 - Необязательное поле без причины; `Json` для данных, которые фильтруются.
 - `Cascade` там, где нужен `Restrict`.
 - Ограничения, написанные руками в SQL миграции, и строка с их именами над моделью.
+- Имя схемы в сыром SQL.
