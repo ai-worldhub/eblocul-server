@@ -1,10 +1,475 @@
 {
-    "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/crates/oxc_linter/src/rules.rs",
-    "rules": {
-        "@typescript-eslint/no-explicit-any": "off",
-        "@typescript-eslint/no-floating-promises": "warn"
-    },
+    "$schema": "./node_modules/oxlint/configuration_schema.json",
+    "plugins": ["typescript", "unicorn", "oxc", "import"],
+    "ignorePatterns": ["src/generated/**"],
     "env": {
         "node": true
-    }
+    },
+    "rules": {
+        "typescript/no-explicit-any": "error",
+        "typescript/no-floating-promises": "error",
+        "typescript/no-misused-promises": "error",
+        "typescript/no-unsafe-argument": "error",
+        "typescript/no-unsafe-assignment": "error",
+        "typescript/no-unsafe-call": "error",
+        "typescript/no-unsafe-member-access": "error",
+        "typescript/no-unsafe-return": "error",
+        "typescript/strict-boolean-expressions": "error",
+        "import/no-cycle": "error",
+        "no-console": "error",
+        "func-style": ["error", "expression"],
+        "prefer-arrow-callback": "error",
+        "no-restricted-imports": [
+            "error",
+            {
+                "paths": [
+                    {
+                        "name": "@nestjs/common",
+                        "importNames": ["Logger", "ConsoleLogger"],
+                        "message": "Log through EventLogger from src/shared/logging"
+                    },
+                    {
+                        "name": "nestjs-pino",
+                        "message": "Log through EventLogger from src/shared/logging"
+                    },
+                    {
+                        "name": "pino",
+                        "message": "Log through EventLogger from src/shared/logging"
+                    },
+                    {
+                        "name": "pino-http",
+                        "message": "Log through EventLogger from src/shared/logging"
+                    }
+                ]
+            }
+        ]
+    },
+    "overrides": [
+        {
+            "files": ["src/*/domain/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../../*/**",
+                                    "../../*.ts",
+                                    "../application/**",
+                                    "../infrastructure/**",
+                                    "../presentation/**",
+                                    "@nestjs/*",
+                                    "@prisma/*"
+                                ],
+                                "message": "domain/ depends on nothing: no other modules, no other layers, no Nest, no Prisma"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/*/domain/*/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../../../*/**",
+                                    "../../../*.ts",
+                                    "../../application/**",
+                                    "../../infrastructure/**",
+                                    "../../presentation/**",
+                                    "@nestjs/*",
+                                    "@prisma/*"
+                                ],
+                                "message": "domain/ depends on nothing: no other modules, no other layers, no Nest, no Prisma"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/*/application/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../infrastructure/**",
+                                    "!../infrastructure/*.select.ts",
+                                    "../presentation/**"
+                                ],
+                                "message": "application/ uses domain/ and infrastructure/*.select.ts only, not other infrastructure/ or presentation/"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/*/application/*/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../../infrastructure/**",
+                                    "!../../infrastructure/*.select.ts",
+                                    "../../presentation/**"
+                                ],
+                                "message": "application/ uses domain/ and infrastructure/*.select.ts only, not other infrastructure/ or presentation/"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/*/infrastructure/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../application/**",
+                                    "../presentation/**"
+                                ],
+                                "message": "infrastructure/ implements domain/ and must not use application/ or presentation/"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/*/infrastructure/*/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../../application/**",
+                                    "../../presentation/**"
+                                ],
+                                "message": "infrastructure/ implements domain/ and must not use application/ or presentation/"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/*/presentation/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../infrastructure/**",
+                                    "!../infrastructure/*.select.ts"
+                                ],
+                                "message": "presentation/ talks to application/ and uses infrastructure/*.select.ts only"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/*/presentation/*/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "../../infrastructure/**",
+                                    "!../../infrastructure/*.select.ts"
+                                ],
+                                "message": "presentation/ talks to application/ and uses infrastructure/*.select.ts only"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/shared/*/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": ["../../*/**"],
+                                "message": "shared/ imports nothing outside shared/: the direction is app -> domains -> shared"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/shared/*/*/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": ["../../../*/**"],
+                                "message": "shared/ imports nothing outside shared/: the direction is app -> domains -> shared"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "nestjs-pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            },
+                            {
+                                "name": "pino-http",
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/shared/logging/*.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": ["../../*/**"],
+                                "message": "shared/ imports nothing outside shared/: the direction is app -> domains -> shared"
+                            }
+                        ],
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/main.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "paths": [
+                            {
+                                "name": "@nestjs/common",
+                                "importNames": ["Logger", "ConsoleLogger"],
+                                "message": "Log through EventLogger from src/shared/logging"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
 }
