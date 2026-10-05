@@ -35,6 +35,7 @@ type Handled = { isFailed: false } | { isFailed: true; error: unknown };
 @Injectable()
 export class JobRunnerService {
     private readonly _active = new Map<string, ActiveRun>();
+    private _isStopping = false;
 
     constructor(
         private readonly _transactions: Transactions,
@@ -47,6 +48,9 @@ export class JobRunnerService {
     ) {}
 
     async runNext(classes: readonly JobClass[]): Promise<boolean> {
+        if (this._isStopping) {
+            return false;
+        }
         const taken = await this._take(classes);
         if (taken === null) {
             return false;
@@ -73,6 +77,7 @@ export class JobRunnerService {
     }
 
     stopActive(): void {
+        this._isStopping = true;
         for (const run of this._active.values()) {
             run.isStopping = true;
             run.abort.abort();
@@ -120,8 +125,12 @@ export class JobRunnerService {
             leaseId,
             abort: new AbortController(),
             leaseExpiresAt: job.leaseExpiresAt ?? this._clock.now(),
-            isStopping: false,
+            isStopping: this._isStopping,
         };
+        if (run.isStopping) {
+            await this._release(run);
+            return;
+        }
         this._active.set(run.jobId, run);
         const startedAt = this._clock.now();
         try {

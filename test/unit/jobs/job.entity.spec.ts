@@ -2,6 +2,7 @@ import {
     JobEntity,
     type JobSnapshot,
     LEASE_MS,
+    leaseCheckIntervalMs,
     leaseNeedsRenewal,
 } from '../../../src/core/jobs/domain/job.entity.ts';
 import type { RetryPolicy } from '../../../src/core/jobs/domain/retry-policy.ts';
@@ -50,6 +51,21 @@ describe('JobEntity', () => {
             createdAt: NOW,
             availableAt: NOW,
             leaseExpiresAt: null,
+        });
+    });
+
+    it('hands out a copy of its state, not the state itself', () => {
+        const job = enqueued();
+        const view = job.view();
+
+        view.attempts = 5;
+        view.payload['label'] = 'changed';
+        view.createdAt.setTime(0);
+
+        expect(job.view()).toMatchObject({
+            attempts: 0,
+            payload: { label: 'first' },
+            createdAt: NOW,
         });
     });
 
@@ -163,6 +179,12 @@ describe('JobEntity', () => {
         expect(leaseNeedsRenewal(leaseExpiresAt, after(LEASE_MS / 2))).toBe(
             true,
         );
+    });
+
+    it('has the lease checked well before renewal is due, however rare the polling', () => {
+        expect(leaseCheckIntervalMs(60_000)).toBeLessThan(LEASE_MS / 2);
+        expect(leaseCheckIntervalMs(60_000)).toBe(leaseCheckIntervalMs(5000));
+        expect(leaseCheckIntervalMs(20)).toBe(20);
     });
 
     it('waits for a retry after a failure, longer each time', () => {

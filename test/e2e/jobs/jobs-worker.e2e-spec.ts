@@ -316,6 +316,36 @@ describe('Jobs worker classes (e2e)', () => {
         expect(worker.barrier.runs).toEqual([]);
     });
 
+    it('takes nothing once it was told to stop', async () => {
+        await worker.enqueue(PROBE_JOB, 'late');
+
+        worker.runner.stopActive();
+
+        expect(await worker.runner.runNext(['p1'])).toBe(false);
+        expect(worker.probe.runs).toEqual([]);
+        expect(await worker.db.job.findFirstOrThrow()).toMatchObject({
+            state: 'waiting',
+            attempts: 0,
+        });
+    });
+
+    it('returns a job taken at the moment of stopping without running it', async () => {
+        await worker.enqueue(PROBE_JOB, 'caught');
+        worker.clock.onRead = () => {
+            worker.runner.stopActive();
+        };
+
+        expect(await worker.runner.runNext(['p1'])).toBe(true);
+
+        expect(worker.probe.runs).toEqual([]);
+        expect(await worker.db.job.findFirstOrThrow()).toMatchObject({
+            state: 'waiting',
+            attempts: 0,
+            leaseId: null,
+            leaseExpiresAt: null,
+        });
+    });
+
     it('does not take a job before its time', async () => {
         await worker.enqueue(PROBE_JOB, 'later', {
             notBefore: after(NOW, 1),

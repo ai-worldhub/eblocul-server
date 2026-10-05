@@ -5,6 +5,7 @@ import { type RetryPolicy, retryDelayMs } from './retry-policy.ts';
 
 export const LEASE_MS = 30_000;
 const LEASE_RENEWAL_SHARE = 0.5;
+const LEASE_CHECK_SHARE = 0.1;
 
 export type JobState = 'waiting' | 'running' | 'dead';
 
@@ -29,6 +30,9 @@ const after = (moment: Date, durationMs: number): Date =>
 
 export const leaseNeedsRenewal = (leaseExpiresAt: Date, now: Date): boolean =>
     leaseExpiresAt.getTime() - now.getTime() <= LEASE_MS * LEASE_RENEWAL_SHARE;
+
+export const leaseCheckIntervalMs = (pollIntervalMs: number): number =>
+    Math.min(pollIntervalMs, LEASE_MS * LEASE_CHECK_SHARE);
 
 export class JobEntity {
     private constructor(private snapshot: JobSnapshot) {}
@@ -62,7 +66,7 @@ export class JobEntity {
     }
 
     view(): JobSnapshot {
-        return this.snapshot;
+        return structuredClone(this.snapshot);
     }
 
     isDue(now: Date): boolean {
