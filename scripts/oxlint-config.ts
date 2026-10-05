@@ -245,7 +245,7 @@ const APP_OVERRIDES: Override[] = [
         ),
     },
     {
-        files: ['src/main.ts'],
+        files: ['src/main.ts', 'src/worker.ts'],
         rules: restrictedImports([], [NEST_LOGGER]),
     },
 ];

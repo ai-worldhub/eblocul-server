@@ -1,0 +1,39 @@
+enum JobClass {
+  p0
+  p1
+  p2
+  p3
+  p4_short
+  p4_long
+
+  @@map("job_class")
+  @@schema("jobs")
+}
+
+enum JobState {
+  waiting
+  running
+  dead
+
+  @@map("job_state")
+  @@schema("jobs")
+}
+
+model Job {
+  id             String    @id @db.Uuid
+  kind           String
+  class          JobClass
+  state          JobState
+  payload        Json
+  dedupKey       String?   @map("dedup_key")
+  attempts       Int
+  leaseId        String?   @map("lease_id") @db.Uuid
+  createdAt      DateTime  @map("created_at") @db.Timestamptz(3)
+  availableAt    DateTime  @map("available_at") @db.Timestamptz(3)
+  leaseExpiresAt DateTime? @map("lease_expires_at") @db.Timestamptz(3)
+
+  @@unique([kind, dedupKey])
+  @@index([state, availableAt])
+  @@map("jobs")
+  @@schema("jobs")
+}
