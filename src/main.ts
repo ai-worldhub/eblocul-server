@@ -18,8 +18,6 @@ const bootstrap = async (): Promise<NestExpressApplication<Server>> => {
     app.enableShutdownHooks();
     configureApp(app);
 
-    const server = app.getHttpServer();
-
     const configService = app.get(ConfigService);
     const runType = configService.get<string>('NODE_ENV');
     const port = configService.getOrThrow<number>('SERVER_PORT');
@@ -30,11 +28,6 @@ const bootstrap = async (): Promise<NestExpressApplication<Server>> => {
 
     if (runType !== 'e2e') {
         await app.listen(port);
-
-        server.requestTimeout = 0;
-        server.timeout = 0;
-        server.keepAliveTimeout = 5000;
-        server.headersTimeout = 65000;
 
         app.get(EventLogger).info('app.started', { port });
     }
