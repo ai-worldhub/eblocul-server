@@ -131,7 +131,7 @@ export class JobRunnerService {
             await this._release(run);
             return;
         }
-        this._active.set(run.jobId, run);
+        this._active.set(run.leaseId, run);
         const startedAt = this._clock.now();
         try {
             const handled = await this._handle(job, run);
@@ -143,7 +143,7 @@ export class JobRunnerService {
                 await this._fail(run, job, handled.error);
             }
         } finally {
-            this._active.delete(run.jobId);
+            this._active.delete(run.leaseId);
         }
     }
 

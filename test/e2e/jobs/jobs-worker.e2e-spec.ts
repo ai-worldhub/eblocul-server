@@ -346,6 +346,40 @@ describe('Jobs worker classes (e2e)', () => {
         });
     });
 
+    it('keeps the lease of the executor that retook a job after the first one returns', async () => {
+        const gates = [createGate(), createGate()];
+        worker.probe.behaviour = (_payload, run) =>
+            gates[run.attempt - 1]?.opened ?? Promise.resolve();
+        await worker.enqueue(PROBE_JOB, 'retaken');
+
+        const first = worker.runner.runNext(['p1']);
+        await waitFor(
+            () => Promise.resolve(worker.probe.runs.length === 1 ? true : null),
+            'the first executor to start',
+        );
+        worker.clock.advance(LEASE_MS);
+        const second = worker.runner.runNext(['p1']);
+        await waitFor(
+            () => Promise.resolve(worker.probe.runs.length === 2 ? true : null),
+            'the second executor to start',
+        );
+
+        gates[0]?.open();
+        await first;
+        worker.clock.advance(LEASE_MS - 1);
+        await worker.runner.renewLeases();
+
+        expect(await worker.db.job.findFirstOrThrow()).toMatchObject({
+            state: 'running',
+            attempts: 2,
+            leaseExpiresAt: after(NOW, LEASE_MS * 3 - 1),
+        });
+
+        gates[1]?.open();
+        await second;
+        expect(await worker.db.job.count()).toBe(0);
+    });
+
     it('does not take a job before its time', async () => {
         await worker.enqueue(PROBE_JOB, 'later', {
             notBefore: after(NOW, 1),
