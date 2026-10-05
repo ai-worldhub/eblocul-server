@@ -245,14 +245,14 @@ const APP_OVERRIDES: Override[] = [
         ),
     },
     {
-        files: ['src/main.ts'],
+        files: ['src/main.ts', 'src/worker.ts'],
         rules: restrictedImports([], [NEST_LOGGER]),
     },
 ];
 
 const OTHER_OVERRIDES: Override[] = [
     {
-        files: ['test/setup/*.ts'],
+        files: ['test/setup/*.ts', 'vitest.config*.ts', 'prisma.config.ts'],
         rules: { 'import/no-default-export': 'off' },
     },
     {

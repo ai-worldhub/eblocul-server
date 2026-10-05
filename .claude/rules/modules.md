@@ -40,7 +40,7 @@ export { MEMBERSHIP_ERROR_STATUSES } from './presentation/membership.error-statu
   Каждое такое представление вносится в список `REFERENCE_VIEWS` теста владения.
 - Внешний ключ между модулями — только в сторону ядра: на аккаунт, узел, объект, членство, файл.
   Прикладные модули друг на друга не ссылаются: связь — id без внешнего ключа и интерфейс модуля.
-- У каждого модуля своя схема PostgreSQL. Она вводится вместе с первым модулем ядра.
+- У каждого модуля своя схема PostgreSQL: `@@schema("<модуль>")` у каждой модели и enum. Таблица `users` остаётся в `public`.
 
 ## Как модули взаимодействуют
 
@@ -55,7 +55,7 @@ return this._transactions.run(async (tx) => {
     ticket.reopen(this._clock.now());
     await this._tickets.save(tx, ticket);
     await this._journal.record(tx, { action: 'ticket.reopened', ticketId });
-    await this._jobs.enqueue(tx, { job: 'ticket_reopened_notice', ticketId });
+    await this._jobs.enqueue(tx, TICKET_REOPENED_NOTICE, { ticketId });
 });
 ```
 
@@ -80,6 +80,8 @@ return this._transactions.run(async (tx) => {
     - циклы импортов.
 - `test/unit/modules/table-ownership.spec.ts`: модель из `prisma/schema/<модуль>.prisma` вызывается
   и типизируется только в коде своего модуля; `shared/` не обращается ни к одной модели.
+- `test/unit/schema/schema-conventions.spec.ts`: схема PostgreSQL модели и enum совпадает с именем файла схемы.
+- `test/unit/jobs/job-handlers-registry.spec.ts`: каждый обработчик задания внесён в `src/app/job-handlers.ts`.
 
 Правила линта собирает `scripts/oxlint-config.ts`. `oxlint.json` руками не правится:
 изменение вносится в скрипт, затем `npm run lint:config`. Расхождение ловит тест `test/unit/lint/`.

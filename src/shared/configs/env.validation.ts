@@ -4,8 +4,10 @@ import {
     IsIn,
     IsInt,
     IsNotEmpty,
+    IsOptional,
     IsString,
     IsUrl,
+    Matches,
     Max,
     Min,
     MinLength,
@@ -18,10 +20,10 @@ export type Environment = (typeof ENVIRONMENTS)[number];
 const LOG_FORMATS = ['json', 'pretty'] as const;
 type LogFormat = (typeof LOG_FORMATS)[number];
 
-const SWITCHES = ['on', 'off'] as const;
-type Switch = (typeof SWITCHES)[number];
-
-const RELAY_INTERVAL_MAX_SECONDS = 3600;
+const NAME_LIST = /^[a-z0-9_]+(,[a-z0-9_]+)*$/;
+const WORKER_CONCURRENCY_MAX = 64;
+const POLL_INTERVAL_MIN_MS = 10;
+const POLL_INTERVAL_MAX_MS = 60_000;
 const SECRET_LENGTH = 32;
 
 export class EnvironmentVariables {
@@ -36,13 +38,19 @@ export class EnvironmentVariables {
     @IsIn(LOG_FORMATS)
     LOG_FORMAT: LogFormat = 'json';
 
-    @IsIn(SWITCHES)
-    JOBS_SCHEDULE: Switch = 'on';
+    @IsOptional()
+    @Matches(NAME_LIST)
+    JOBS_WORKER_CLASSES?: string;
 
     @IsInt()
-    @Min(0)
-    @Max(RELAY_INTERVAL_MAX_SECONDS)
-    JOBS_RELAY_INTERVAL_SECONDS: number = 5;
+    @Min(1)
+    @Max(WORKER_CONCURRENCY_MAX)
+    JOBS_WORKER_CONCURRENCY: number = 4;
+
+    @IsInt()
+    @Min(POLL_INTERVAL_MIN_MS)
+    @Max(POLL_INTERVAL_MAX_MS)
+    JOBS_POLL_INTERVAL_MS: number = 1000;
 
     @IsUrl({
         protocols: ['postgres', 'postgresql'],

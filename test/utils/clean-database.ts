@@ -5,10 +5,13 @@ export const cleanDatabase = async (db: DbService): Promise<void> => {
         throw new Error('Refusing to clean the database outside NODE_ENV=e2e');
     }
 
-    const tables = await db.$queryRaw<{ tablename: string }[]>`
-        SELECT tablename
+    const tables = await db.$queryRaw<
+        { schemaname: string; tablename: string }[]
+    >`
+        SELECT schemaname, tablename
         FROM pg_tables
-        WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'
+        WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+          AND tablename <> '_prisma_migrations'
     `;
 
     if (tables.length === 0) {
@@ -16,7 +19,7 @@ export const cleanDatabase = async (db: DbService): Promise<void> => {
     }
 
     const list = tables
-        .map(({ tablename }) => `"public"."${tablename}"`)
+        .map(({ schemaname, tablename }) => `"${schemaname}"."${tablename}"`)
         .join(', ');
 
     await db.$executeRawUnsafe(

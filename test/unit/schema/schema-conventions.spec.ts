@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SCHEMA_DIR = fileURLToPath(
@@ -10,6 +10,9 @@ const BLOCK = /^(model|enum)\s+(\w+)\s*\{([^}]*)\}/gm;
 const SNAKE = /^[a-z][a-z0-9_]*$/;
 const MAPPED = /@map\("([^"]+)"\)/;
 const BLOCK_MAPPED = /@@map\("([^"]+)"\)/;
+const BLOCK_SCHEMA = /@@schema\("([^"]+)"\)/;
+const PUBLIC_SCHEMA = 'public';
+const PUBLIC_SCHEMA_FILES = ['user.prisma'];
 const RELATION_FIELDS = /@relation\([^)]*fields:\s*\[([^\]]+)\]/;
 const LEADING_COLUMN = /@@(?:index|unique|id)\(\[\s*(\w+)/g;
 const SCALARS = [
@@ -116,12 +119,22 @@ const unindexedKeys = (block: Block): string[] => {
     });
 };
 
+const schemaProblems = (block: Block): string[] => {
+    const expected = PUBLIC_SCHEMA_FILES.includes(block.file)
+        ? PUBLIC_SCHEMA
+        : basename(block.file, '.prisma');
+    return BLOCK_SCHEMA.exec(block.lines.join('\n'))?.[1] === expected
+        ? []
+        : [`needs @@schema("${expected}"): the schema of its module`];
+};
+
 const modelProblems = (block: Block, enums: string[]): string[] => {
     const mapped = BLOCK_MAPPED.exec(block.lines.join('\n'))?.[1];
     return [
         ...(mapped === undefined || !SNAKE.test(mapped)
             ? ['needs @@map with a snake_case name']
             : []),
+        ...schemaProblems(block),
         ...fieldsOf(block).flatMap((field) => fieldProblems(field, enums)),
         ...unindexedKeys(block),
     ];
@@ -133,6 +146,7 @@ const enumProblems = (block: Block): string[] => {
         ...(mapped === undefined || !SNAKE.test(mapped)
             ? ['needs @@map with a snake_case name']
             : []),
+        ...schemaProblems(block),
         ...block.lines
             .filter((line) => !line.startsWith('@@') && !SNAKE.test(line))
             .map((value) => `${value}: value is not lower snake_case`),
