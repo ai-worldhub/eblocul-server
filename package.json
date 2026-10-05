@@ -22,6 +22,8 @@
         "start:worker": "nest start --entryFile worker",
         "start:worker:dev": "nest start --entryFile worker --watch",
         "start:worker:prod": "node dist/worker",
+        "seed": "nest start --entryFile seed",
+        "seed:built": "node dist/seed",
         "lint": "oxlint -c oxlint.json --type-aware src/ test/ scripts/",
         "lint:config": "node scripts/write-oxlint-config.ts && prettier --write oxlint.json",
         "knip": "knip",

@@ -4,6 +4,7 @@ paths:
     - 'src/app/**'
     - 'src/main.ts'
     - 'src/worker.ts'
+    - 'src/seed.ts'
 ---
 
 # `app/` и `shared/`
@@ -15,6 +16,7 @@ paths:
 - `generated/` — клиент Prisma, создаётся `prisma generate`, руками не правится и в git не попадает;
 - `main.ts` — точка входа процесса API;
 - `worker.ts` — точка входа процесса исполнителей заданий, без HTTP;
+- `seed.ts` — точка входа команды наполнения базы `lab`, без HTTP;
 - `core/` — модули ядра, по папке на модуль;
 - `modules/` — прикладные модули, по папке на модуль.
 
@@ -30,6 +32,8 @@ paths:
 - `app.module.ts` — список модулей;
 - `worker.module.ts` — `AppModule` и исполнители заданий со списком обработчиков; его собирает `worker.ts`;
 - `job-handlers.ts` — общий список обработчиков заданий всех модулей: только импорты и массив;
+- `seed.module.ts` — `AppModule` и запуск сидов со списком; его собирает `seed.ts`;
+- `lab-seeds.ts` — общий список сидов всех модулей: только импорты и массив;
 - `app.setup.ts` — префикс, валидация, фильтр ошибок, OpenAPI-документ;
 - `error-statuses.ts` — реестр таблиц «код ошибки → статус» всех модулей.
 
@@ -46,6 +50,7 @@ paths:
 | `clock/`   | `Clock` — текущее время                                            |
 | `ids/`     | `Ids` — id записей                                                 |
 | `health/`  | `GET /api/v1/health`                                               |
+| `seeding/` | `LabSeed` — основа сида, `SeedRunner` — запуск списка сидов        |
 
 `ConfigService`, `DbService`, `Transactions`, `EventLogger`, `Clock` и `Ids` объявлены глобально: модуль
 внедряет их через конструктор и ничего не импортирует в своём `*.module.ts`.
@@ -66,7 +71,7 @@ oxlint:
 
 - файл в `shared/` импортирует только `shared/` и `generated/`;
 - файл модуля не импортирует `app/`;
-- `nestjs-pino`, `pino` и `pino-http` импортируются только в `shared/logging/`, `main.ts` и `worker.ts`.
+- `nestjs-pino`, `pino` и `pino-http` импортируются только в `shared/logging/`, `main.ts`, `worker.ts` и `seed.ts`.
 
 ## Не проверяется
 
