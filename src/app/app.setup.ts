@@ -39,10 +39,7 @@ export const createOpenApiDocument = (app: INestApplication): OpenAPIObject => {
         .setVersion('1.0')
         .addServer('http://localhost:3000', 'local')
 
-        .addBearerAuth(
-            { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-            'user-token',
-        )
+        .addSecurity('user-token', { type: 'http', scheme: 'bearer' })
         .build();
 
     return SwaggerModule.createDocument(app, config, { deepScanRoutes: true });

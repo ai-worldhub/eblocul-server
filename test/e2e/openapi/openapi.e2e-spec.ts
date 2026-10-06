@@ -166,4 +166,8 @@ describe('OpenAPI description (e2e)', () => {
         expect(ids.filter((id) => id === undefined)).toEqual([]);
         expect(new Set(ids).size).toBe(ids.length);
     });
+
+    it('does not present the session identifier as a JWT', () => {
+        expect(text).not.toContain('"bearerFormat"');
+    });
 });

@@ -25,7 +25,7 @@ Backend приложения жилого комплекса: NestJS, Prisma, Po
     CREATE DATABASE eblocul_e2e;
     ```
 
-3. Создать файл окружения и заполнить в нём `AUTH_JWT_SECRET`: 32 символа или больше, например вывод `openssl rand -hex 32`. Если у PostgreSQL другие пользователь и пароль, поправить `DATABASE_URL`.
+3. Создать файл окружения. Если у PostgreSQL другие пользователь и пароль, поправить в нём `DATABASE_URL`.
 
     ```bash
     cp .env.example .env.local

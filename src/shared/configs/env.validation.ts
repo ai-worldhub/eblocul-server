@@ -10,7 +10,6 @@ import {
     Matches,
     Max,
     Min,
-    MinLength,
     validateSync,
 } from 'class-validator';
 
@@ -24,7 +23,6 @@ const NAME_LIST = /^[a-z0-9_]+(,[a-z0-9_]+)*$/;
 const WORKER_CONCURRENCY_MAX = 64;
 const POLL_INTERVAL_MIN_MS = 10;
 const POLL_INTERVAL_MAX_MS = 60_000;
-const SECRET_LENGTH = 32;
 
 export class EnvironmentVariables {
     @IsIn(ENVIRONMENTS)
@@ -58,10 +56,6 @@ export class EnvironmentVariables {
         require_tld: false,
     })
     DATABASE_URL: string;
-
-    @IsString()
-    @MinLength(SECRET_LENGTH)
-    AUTH_JWT_SECRET: string;
 
     @IsString()
     @IsNotEmpty()
