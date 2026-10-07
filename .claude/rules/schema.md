@@ -84,9 +84,35 @@ model Ticket {
 }
 ```
 
-## Ждёт архитектуры
+## Данные дома
 
-- Общие поля каждой таблицы с данными дома: корень комплекса, узел-владелец.
+Таблица с данными дома — объявления, сообщения, заявки, записи журнала — хранит два поля (`docs/decisions.md`, Р-4):
+
+- `complexId` — корень комплекса;
+- `ownerNodeId` — узел, на котором данные созданы.
+
+Оба поля — `String @db.Uuid` с внешним ключом на узел модуля `structure` и `onDelete: Restrict`.
+Область видимости накладывается условием по этим полям в самом запросе, а не проверкой после выборки.
+Узлы не переезжают, поэтому `complexId` строки не меняется.
+
+```prisma
+model Announcement {
+  id          String @id @db.Uuid
+  complexId   String @map("complex_id") @db.Uuid
+  ownerNodeId String @map("owner_node_id") @db.Uuid
+
+  complex   Node @relation("AnnouncementComplex", fields: [complexId], references: [id], onDelete: Restrict)
+  ownerNode Node @relation("AnnouncementOwnerNode", fields: [ownerNodeId], references: [id], onDelete: Restrict)
+
+  @@index([complexId, ownerNodeId])
+  @@index([ownerNodeId])
+  @@map("announcements")
+  @@schema("announcements")
+}
+```
+
+У таблиц самого дерева поля свои: у узла — `complexId`, у объекта — `complexId` и `nodeId`.
+Аккаунты, сессии и задания данными дома не являются: этих полей у них нет.
 
 ## Проверяется автоматически
 
@@ -109,3 +135,4 @@ model Ticket {
 - `Cascade` там, где нужен `Restrict`.
 - Ограничения, написанные руками в SQL миграции, и строка с их именами над моделью.
 - Имя схемы в сыром SQL.
+- Таблица с данными дома без `complexId` и `ownerNodeId`.
