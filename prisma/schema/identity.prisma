@@ -1,0 +1,61 @@
+enum SessionApplication {
+  admin_panel
+  guard_panel
+  resident_app
+
+  @@map("session_application")
+  @@schema("identity")
+}
+
+enum SessionTransport {
+  cookie
+  header
+
+  @@map("session_transport")
+  @@schema("identity")
+}
+
+model Account {
+  id              String    @id @db.Uuid
+  firstName       String    @map("first_name")
+  lastName        String    @map("last_name")
+  phone           String    @unique
+  email           String?   @unique
+  createdAt       DateTime  @map("created_at") @db.Timestamptz(3)
+  phoneVerifiedAt DateTime? @map("phone_verified_at") @db.Timestamptz(3)
+
+  password AccountPassword?
+  sessions Session[]
+
+  @@map("accounts")
+  @@schema("identity")
+}
+
+model AccountPassword {
+  accountId String   @id @map("account_id") @db.Uuid
+  hash      String
+  changedAt DateTime @map("changed_at") @db.Timestamptz(3)
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("account_passwords")
+  @@schema("identity")
+}
+
+model Session {
+  id           String             @id @db.Uuid
+  accountId    String             @map("account_id") @db.Uuid
+  tokenHash    String             @unique @map("token_hash")
+  application  SessionApplication
+  transport    SessionTransport
+  createdAt    DateTime           @map("created_at") @db.Timestamptz(3)
+  lastActiveAt DateTime           @map("last_active_at") @db.Timestamptz(3)
+  expiresAt    DateTime           @map("expires_at") @db.Timestamptz(3)
+  endedAt      DateTime?          @map("ended_at") @db.Timestamptz(3)
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([accountId])
+  @@map("sessions")
+  @@schema("identity")
+}

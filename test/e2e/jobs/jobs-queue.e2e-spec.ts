@@ -6,6 +6,7 @@ import { Ids } from '../../../src/shared/ids/ids.service.ts';
 import { ClockDouble } from '../../utils/clock.double.ts';
 import { useTestApp } from '../../utils/e2e-setup.ts';
 import { BARRIER_JOB, PROBE_JOB } from '../../utils/job-handler.double.ts';
+import { accountRow } from '../../factories/identity.factory.ts';
 
 const NOW = new Date('2026-10-05T10:00:00.000Z');
 const LATER = new Date('2026-10-05T12:00:00.000Z');
@@ -69,12 +70,12 @@ describe('Jobs queue (e2e)', () => {
     });
 
     it('refuses a payload over the limit and rolls the transaction back', async () => {
-        const userId = testApp.app.get(Ids).next();
+        const accountId = testApp.app.get(Ids).next();
 
         await expect(
             transactions().run(async (tx) => {
-                await tx.user.create({
-                    data: { id: userId },
+                await tx.account.create({
+                    data: accountRow.build({ id: accountId }),
                     select: { id: true },
                 });
                 await queue().enqueue(tx, PROBE_JOB, {
@@ -84,11 +85,13 @@ describe('Jobs queue (e2e)', () => {
         ).rejects.toMatchObject({ code: 'JOBS_PAYLOAD_TOO_LARGE' });
 
         expect(await testApp.db.job.count()).toBe(0);
-        expect(await testApp.db.user.count({ where: { id: userId } })).toBe(0);
+        expect(
+            await testApp.db.account.count({ where: { id: accountId } }),
+        ).toBe(0);
     });
 
     it('ignores a second job of the same kind with the same key', async () => {
-        const userId = testApp.app.get(Ids).next();
+        const accountId = testApp.app.get(Ids).next();
 
         await transactions().run((tx) =>
             queue().enqueue(
@@ -105,15 +108,17 @@ describe('Jobs queue (e2e)', () => {
                 { label: 'second' },
                 { dedupKey: 'unit-1' },
             );
-            await tx.user.create({
-                data: { id: userId },
+            await tx.account.create({
+                data: accountRow.build({ id: accountId }),
                 select: { id: true },
             });
         });
 
         const jobs = await testApp.db.job.findMany();
         expect(jobs.map((job) => job.payload)).toEqual([{ label: 'first' }]);
-        expect(await testApp.db.user.count({ where: { id: userId } })).toBe(1);
+        expect(
+            await testApp.db.account.count({ where: { id: accountId } }),
+        ).toBe(1);
     });
 
     it('keeps jobs that share a key but not a kind, and jobs without a key', async () => {

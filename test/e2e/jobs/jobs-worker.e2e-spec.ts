@@ -14,6 +14,7 @@ import {
 import { DbService } from '../../../src/shared/db/db.service.ts';
 import { type JobWorker, startJobWorker } from '../../utils/job-worker.ts';
 import { waitFor } from '../../utils/wait-for.ts';
+import { accountRow } from '../../factories/identity.factory.ts';
 
 const NOW = new Date('2026-10-05T10:00:00.000Z');
 const FIRST_RETRY_DELAY_MS = 1000;
@@ -102,12 +103,12 @@ describe('Jobs worker (e2e)', () => {
     });
 
     it('removes the job in the transaction of its result when the handler completes it there', async () => {
-        const userId = worker.ids.next();
+        const accountId = worker.ids.next();
         const seen: { inside: number; committed: number }[] = [];
         worker.probe.behaviour = async (_payload, run) => {
             const inside = await worker.transactions.run(async (tx) => {
-                await tx.user.create({
-                    data: { id: userId },
+                await tx.account.create({
+                    data: accountRow.build({ id: accountId }),
                     select: { id: true },
                 });
                 await run.complete(tx);
@@ -123,17 +124,19 @@ describe('Jobs worker (e2e)', () => {
             'the handler to return',
         );
         expect(seen).toEqual([{ inside: 1, committed: 0 }]);
-        expect(await worker.db.user.count({ where: { id: userId } })).toBe(1);
+        expect(
+            await worker.db.account.count({ where: { id: accountId } }),
+        ).toBe(1);
         await passBarrier();
         expect(worker.probe.runs).toHaveLength(1);
     });
 
     it('keeps the job when the transaction that completed it rolls back', async () => {
-        const userId = worker.ids.next();
+        const accountId = worker.ids.next();
         worker.probe.behaviour = (_payload, run) =>
             worker.transactions.run(async (tx) => {
-                await tx.user.create({
-                    data: { id: userId },
+                await tx.account.create({
+                    data: accountRow.build({ id: accountId }),
                     select: { id: true },
                 });
                 await run.complete(tx);
@@ -143,7 +146,9 @@ describe('Jobs worker (e2e)', () => {
         await worker.enqueue(PROBE_JOB, 'rolled back');
 
         await probeJobIn('waiting', 1);
-        expect(await worker.db.user.count({ where: { id: userId } })).toBe(0);
+        expect(
+            await worker.db.account.count({ where: { id: accountId } }),
+        ).toBe(0);
     });
 
     it('retries a failed job after a delay and gives up when attempts run out', async () => {
@@ -381,7 +386,7 @@ describe('Jobs worker classes (e2e)', () => {
     });
 
     it('refuses the result of an executor whose job another one has already finished', async () => {
-        const userId = worker.ids.next();
+        const accountId = worker.ids.next();
         const gate = createGate();
         const refused: unknown[] = [];
         worker.probe.behaviour = async (_payload, run) => {
@@ -391,8 +396,8 @@ describe('Jobs worker classes (e2e)', () => {
             await gate.opened;
             try {
                 await worker.transactions.run(async (tx) => {
-                    await tx.user.create({
-                        data: { id: userId },
+                    await tx.account.create({
+                        data: accountRow.build({ id: accountId }),
                         select: { id: true },
                     });
                     await run.complete(tx);
@@ -419,7 +424,9 @@ describe('Jobs worker classes (e2e)', () => {
         expect(refused).toEqual([
             expect.objectContaining({ code: 'JOBS_LEASE_LOST' }),
         ]);
-        expect(await worker.db.user.count({ where: { id: userId } })).toBe(0);
+        expect(
+            await worker.db.account.count({ where: { id: accountId } }),
+        ).toBe(0);
         expect(await worker.db.job.count()).toBe(0);
     });
 
