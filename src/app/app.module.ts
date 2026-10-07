@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { IdentityModule } from '../core/identity/index.ts';
 import { JobsModule } from '../core/jobs/index.ts';
 import { SetupConfigModule } from '../shared/configs/setup-config.module.ts';
 import { DbModule } from '../shared/db/db.module.ts';
@@ -16,6 +17,7 @@ import { AppLoggingModule } from '../shared/logging/logging.module.ts';
         HealthModule,
         AppLoggingModule.register(),
         JobsModule,
+        IdentityModule,
     ],
     controllers: [],
     providers: [],

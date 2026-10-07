@@ -8,6 +8,8 @@ export default defineConfig({
             NODE_ENV: 'e2e',
             JOBS_WORKER_CONCURRENCY: '2',
             JOBS_POLL_INTERVAL_MS: '20',
+            WEB_PANEL_ORIGINS: 'https://panel.eblocul.invalid',
+            SEED_ADMIN_PASSWORD: 'e2e-password-not-real-1',
             MAIL_SMTP_HOST: 'mailpit.invalid',
             MAIL_SMTP_PORT: '1025',
             MAIL_FROM: 'no-reply@eblocul.invalid',
