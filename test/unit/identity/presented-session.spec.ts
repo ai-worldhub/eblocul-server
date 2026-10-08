@@ -14,21 +14,34 @@ describe('presentedSessionOf', () => {
         ).toEqual({ token: 'abc', transport: 'cookie' });
     });
 
-    it('reads the bearer header as the header transport', () => {
-        expect(presentedSessionOf({ authorization: 'Bearer abc' })).toEqual({
-            token: 'abc',
-            transport: 'header',
-        });
+    it('reads the bearer header as the header transport, whatever its case', () => {
+        for (const authorization of [
+            'Bearer abc',
+            'bearer abc',
+            'BEARER  abc',
+        ]) {
+            expect(presentedSessionOf({ authorization })).toEqual({
+                token: 'abc',
+                transport: 'header',
+            });
+        }
     });
 
-    it('refuses a request that presents a session both ways', () => {
-        expect(() =>
-            presentedSessionOf({
-                cookie: 'eblocul_session=abc',
-                authorization: 'Bearer abc',
-            }),
-        ).toThrow(
-            expect.objectContaining({ code: 'IDENTITY_SESSION_REQUIRED' }),
-        );
+    it('refuses a request that carries the cookie and any Authorization header', () => {
+        for (const authorization of [
+            'Bearer abc',
+            'bearer abc',
+            'Basic abc',
+            'Bearer abc ',
+        ]) {
+            expect(() =>
+                presentedSessionOf({
+                    cookie: 'eblocul_session=abc',
+                    authorization,
+                }),
+            ).toThrow(
+                expect.objectContaining({ code: 'IDENTITY_SESSION_REQUIRED' }),
+            );
+        }
     });
 });

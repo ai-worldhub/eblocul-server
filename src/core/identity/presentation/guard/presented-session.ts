@@ -4,7 +4,7 @@ import type { PresentedSession } from '../../application/services/session.servic
 import { sessionRequired } from '../../domain/entities/session.entity.ts';
 import { SESSION_COOKIE_NAME } from './session-cookie.ts';
 
-const BEARER = /^Bearer (\S+)$/;
+const BEARER = /^Bearer +(\S+)$/i;
 
 export const sessionCookieOf = (
     headers: IncomingHttpHeaders,
@@ -13,15 +13,16 @@ export const sessionCookieOf = (
     return value === undefined || value === '' ? null : value;
 };
 
-const bearerOf = (headers: IncomingHttpHeaders): string | null =>
-    BEARER.exec(headers.authorization ?? '')?.[1] ?? null;
+const bearerOf = (authorization: string): string | null =>
+    BEARER.exec(authorization)?.[1] ?? null;
 
 export const presentedSessionOf = (
     headers: IncomingHttpHeaders,
 ): PresentedSession | null => {
     const cookie = sessionCookieOf(headers);
-    const bearer = bearerOf(headers);
-    if (cookie !== null && bearer !== null) {
+    const authorization = headers.authorization ?? '';
+    const bearer = bearerOf(authorization);
+    if (cookie !== null && authorization !== '') {
         throw sessionRequired();
     }
     if (cookie !== null) {
