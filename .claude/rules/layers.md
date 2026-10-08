@@ -17,21 +17,28 @@ src/core/<модуль>/  или  src/modules/<модуль>/
   index.ts                        всё, что открыто другим модулям
   <модуль>.module.ts              связывает слои и порты с реализациями
   domain/                         правила предметной области
-    <предмет>.entity.ts
     <модуль>.errors.ts
+    entities/<предмет>.entity.ts
+    rules/<правило>.ts
   ports/                          абстрактные классы: всё, что модулю нужно снаружи
     <предмет>.repository.ts
     <что>.port.ts
   application/                    сценарии
-    <тема>.service.ts
     <модуль>.log-events.ts
+    services/<тема>.service.ts
+    seeds/<что>.seed.ts
+    handlers/<задание>.handler.ts
   infrastructure/                 реализации портов
-    prisma/<предмет>.repository.ts
     <модель>.select.ts
+    prisma/<предмет>.repository.ts
+    <технология>/<что>.ts
   presentation/                   HTTP
-    <модуль>.controller.ts
+    <тема>.controller.ts
     <модуль>.error-statuses.ts
     dto/<сущность>.dto.ts
+    mappers/<модель>.mapper.ts
+    guard/<что>.ts
+    decorators/<что>.decorator.ts
 ```
 
 Слой, который модулю не нужен, не создаётся.
@@ -97,14 +104,19 @@ const code = AccessCodeEntity.issue({
 
 ## Сервисы
 
-Сервис — на тему, а не один на модуль: `resident-access.service.ts`,
-`resident-import.service.ts`. Сервис, в котором сошлись две темы, делится.
+Сервис — на тему, а не один на модуль: `services/resident-access.service.ts`,
+`services/resident-import.service.ts`. Сервис, в котором сошлись две темы, делится.
 
 ## Группировка внутри слоя
 
+- Файлы слоя лежат в папках по виду. Папка вида создаётся с первым файлом этого вида.
+- `domain/` — `entities/`, `rules/`.
+- `application/` — `services/`, `seeds/`, `handlers/`.
+- `presentation/` — `dto/`, `mappers/`, `guard/`, `decorators/`.
+- `infrastructure/` — по технологиям: `prisma/`, `node/`, `sms/`.
+- В корне слоя остаётся только то, у чего вида нет: ошибки модуля, события журнала, объявления заданий,
+  таблица статусов, контроллеры, выборки `*.select.ts`.
 - Вложенность — не глубже одной папки.
-- `domain/` делится по предметам, `infrastructure/` — по технологиям (`prisma/`, `sms/`), `presentation/` — `dto/`.
-- Папка появляется, когда в слое больше шести файлов.
 
 ## Проверяется автоматически
 
@@ -114,4 +126,4 @@ oxlint: направления из таблицы на двух уровнях 
 
 - Правило, которое утекло из entity в сервис; entity, которая сама берёт время или id.
 - Entity, заведённая для простой сущности; чтение для экрана через репозиторий.
-- Сервис на несколько тем; вложенность глубже одной папки.
+- Сервис на несколько тем; вложенность глубже одной папки; файл вне папки своего вида.
