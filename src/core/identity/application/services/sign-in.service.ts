@@ -16,6 +16,7 @@ const ADMIN_PANEL: SessionApplication = 'admin_panel';
 export type PasswordSignIn = {
     email: string;
     password: string;
+    replacedToken: string | null;
 };
 
 @Injectable()
@@ -76,6 +77,12 @@ export class SignInService implements OnModuleInit {
             sessionId: started.session.sessionId,
             application: ADMIN_PANEL,
         });
+        if (input.replacedToken !== null) {
+            await this._sessions.end({
+                token: input.replacedToken,
+                transport: 'cookie',
+            });
+        }
         return started;
     }
 }

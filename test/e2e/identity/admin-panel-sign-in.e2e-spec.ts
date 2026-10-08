@@ -6,11 +6,13 @@ import {
 } from '../../factories/identity.factory.ts';
 import {
     ADMIN,
+    cookieHeader,
     createAdmin,
     FOREIGN_ORIGIN,
     issuedCookie,
     LOGIN_PATH,
     PANEL_ORIGIN,
+    SESSION_PATH,
     signIn,
 } from '../../utils/admin-session.ts';
 import { useTestApp } from '../../utils/e2e-setup.ts';
@@ -60,6 +62,50 @@ describe('Administration panel sign-in (e2e)', () => {
                 .digest('hex'),
         });
         expect(JSON.stringify(sessions)).not.toContain(token);
+    });
+
+    it('ends the session the browser already had when it signs in again', async () => {
+        await createAdmin(testApp);
+        const first = issuedCookie(await signIn(testApp).expect(200))?.value;
+
+        const second = issuedCookie(
+            await signIn(testApp)
+                .set('Cookie', cookieHeader(first ?? ''))
+                .expect(200),
+        )?.value;
+
+        expect(second).not.toBe(first);
+        await testApp
+            .http()
+            .get(SESSION_PATH)
+            .set('Cookie', cookieHeader(first ?? ''))
+            .expect(401);
+        await testApp
+            .http()
+            .get(SESSION_PATH)
+            .set('Cookie', cookieHeader(second ?? ''))
+            .expect(200);
+        expect(
+            await testApp.db.session.count({ where: { endedAt: null } }),
+        ).toBe(1);
+    });
+
+    it('keeps the session the browser had when the new sign-in fails', async () => {
+        await createAdmin(testApp);
+        const token = issuedCookie(await signIn(testApp).expect(200))?.value;
+
+        await signIn(testApp, {
+            email: ADMIN.email,
+            password: 'wrong-password-99',
+        })
+            .set('Cookie', cookieHeader(token ?? ''))
+            .expect(401);
+
+        await testApp
+            .http()
+            .get(SESSION_PATH)
+            .set('Cookie', cookieHeader(token ?? ''))
+            .expect(200);
     });
 
     it('finds the account whatever the letter case of the email', async () => {
