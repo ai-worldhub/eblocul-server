@@ -150,6 +150,43 @@ describe('NodeEntity', () => {
         );
     });
 
+    it('accepts a retry that names the same parent and kind, whatever the name', () => {
+        const zone = root('zone');
+        const stored = childOf(zone, 'building');
+        const retry = zone.child({
+            id: CHILD_ID,
+            kind: 'building',
+            name: 'Another Name',
+            address: '2 Example Street',
+            now: NOW,
+        });
+
+        expect(() => stored.acceptRetry(retry)).not.toThrow();
+        expect(() => root('zone').acceptRetry(root('zone'))).not.toThrow();
+    });
+
+    it('refuses a retry under another parent or of another kind', () => {
+        const zone = root('zone');
+        const stored = childOf(zone, 'building');
+        const elsewhere = childOf(zone, 'line', GRANDCHILD_ID);
+
+        for (const retry of [
+            childOf(zone, 'line'),
+            NodeEntity.restore({
+                ...stored.view(),
+                parentId: elsewhere.view().id,
+            }),
+            NodeEntity.restore({ ...stored.view(), parentId: null }),
+        ]) {
+            expect(() => stored.acceptRetry(retry)).toThrowError(
+                expect.objectContaining({
+                    code: 'STRUCTURE_ID_TAKEN',
+                    details: { id: CHILD_ID },
+                }),
+            );
+        }
+    });
+
     it('stores a blank address as no address', () => {
         const node = NodeEntity.root({
             id: ROOT_ID,

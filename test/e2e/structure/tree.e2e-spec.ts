@@ -355,6 +355,111 @@ describe('Structure tree (e2e)', () => {
         });
     });
 
+    describe('a repeated request', () => {
+        const counts = async (): Promise<number[]> => [
+            await testApp.db.node.count(),
+            await testApp.db.nodeAncestor.count(),
+            await testApp.db.unit.count(),
+        ];
+
+        it('returns the root, the node and the unit created before and adds nothing', async () => {
+            const { house, firstEntrance, apartment7 } = await addHouse();
+            const before = await counts();
+
+            const root = await transactions().run((tx) =>
+                building().createRoot(tx, {
+                    id: house.id,
+                    kind: 'building',
+                    name: 'Another Name',
+                    address: null,
+                }),
+            );
+            const entrance = await addChild(house.id, 'entrance', 'Renamed', {
+                id: firstEntrance.id,
+            });
+            const apartment = await addUnit(
+                firstEntrance.id,
+                'apartment',
+                '700',
+                { id: apartment7.id },
+            );
+
+            expect(root).toEqual(house);
+            expect(entrance).toEqual(firstEntrance);
+            expect(apartment).toEqual(apartment7);
+            expect(await counts()).toEqual(before);
+        });
+
+        it('keeps the transaction of the caller usable after a repeat', async () => {
+            const { firstEntrance, apartment7 } = await addHouse();
+
+            const added = await transactions().run(async (tx) => {
+                await building().createUnit(tx, {
+                    id: apartment7.id,
+                    nodeId: firstEntrance.id,
+                    type: 'apartment',
+                    number: '7',
+                    floor: 2,
+                });
+                return building().createUnit(tx, {
+                    id: nextId(),
+                    nodeId: firstEntrance.id,
+                    type: 'apartment',
+                    number: '8',
+                    floor: 2,
+                });
+            });
+
+            expect(added.number).toBe('8');
+            expect(await testApp.db.unit.count()).toBe(3);
+        });
+
+        it('refuses the id of a node that stands elsewhere and does not reveal it', async () => {
+            const { house, firstEntrance } = await addHouse();
+            const other = await addRoot('zone', 'Test Zone');
+            const before = await counts();
+
+            await expect(
+                addChild(other.id, 'building', 'Building 1', {
+                    id: firstEntrance.id,
+                }),
+            ).rejects.toMatchObject({
+                code: 'STRUCTURE_ID_TAKEN',
+                details: { id: firstEntrance.id },
+            });
+            await expect(
+                addChild(house.id, 'entrance', 'Entrance 3', { id: house.id }),
+            ).rejects.toMatchObject({ code: 'STRUCTURE_ID_TAKEN' });
+            await expect(
+                transactions().run((tx) =>
+                    building().createRoot(tx, {
+                        id: firstEntrance.id,
+                        kind: 'building',
+                        name: 'Test House',
+                        address: null,
+                    }),
+                ),
+            ).rejects.toMatchObject({ code: 'STRUCTURE_ID_TAKEN' });
+
+            expect(await counts()).toEqual(before);
+        });
+
+        it('refuses the id of a unit that belongs to another node', async () => {
+            const { secondEntrance, apartment7 } = await addHouse();
+
+            await expect(
+                addUnit(secondEntrance.id, 'apartment', '50', {
+                    id: apartment7.id,
+                }),
+            ).rejects.toMatchObject({
+                code: 'STRUCTURE_ID_TAKEN',
+                details: { id: apartment7.id },
+            });
+
+            expect(await testApp.db.unit.count()).toBe(2);
+        });
+    });
+
     describe('refusals', () => {
         it('refuses a child that breaks the order of levels and stores nothing', async () => {
             const { house } = await addHouse();

@@ -42,16 +42,14 @@ export class TreeBuildingService {
 
     async createRoot(tx: Tx, input: NewRoot): Promise<NodeSnapshot> {
         const root = NodeEntity.root({ ...input, now: this._clock.now() });
-        await this._nodes.add(tx, root);
-        return root.view();
+        return this._store(tx, root);
     }
 
     async createChild(tx: Tx, input: NewChild): Promise<NodeSnapshot> {
         const { parentId, ...node } = input;
         const parent = await this._lockNode(tx, parentId);
         const child = parent.child({ ...node, now: this._clock.now() });
-        await this._nodes.add(tx, child);
-        return child.view();
+        return this._store(tx, child);
     }
 
     async createUnit(tx: Tx, input: NewUnit): Promise<UnitSnapshot> {
@@ -64,8 +62,15 @@ export class TreeBuildingService {
             floor: input.floor,
             now: this._clock.now(),
         });
-        await this._units.add(tx, unit);
-        return unit.view();
+        const stored = await this._units.addOrFind(tx, unit);
+        stored.acceptRetry(unit);
+        return stored.view();
+    }
+
+    private async _store(tx: Tx, node: NodeEntity): Promise<NodeSnapshot> {
+        const stored = await this._nodes.addOrFind(tx, node);
+        stored.acceptRetry(node);
+        return stored.view();
     }
 
     private async _lockNode(tx: Tx, nodeId: string): Promise<NodeEntity> {

@@ -4,6 +4,7 @@ import {
     assertUnitPlacement,
     type UnitType,
 } from '../rules/unit-placement.ts';
+import { StructureError } from '../structure.errors.ts';
 import type { NodeSnapshot } from './node.entity.ts';
 
 export type UnitSnapshot = {
@@ -38,6 +39,23 @@ export class UnitEntity {
             floor: input.floor,
             createdAt: input.now,
         });
+    }
+
+    static restore(snapshot: UnitSnapshot): UnitEntity {
+        return new UnitEntity(snapshot);
+    }
+
+    acceptRetry(retry: UnitEntity): void {
+        if (
+            this.snapshot.nodeId !== retry.snapshot.nodeId ||
+            this.snapshot.type !== retry.snapshot.type
+        ) {
+            throw new StructureError(
+                'STRUCTURE_ID_TAKEN',
+                'This id already belongs to another unit',
+                { id: retry.snapshot.id },
+            );
+        }
     }
 
     view(): UnitSnapshot {

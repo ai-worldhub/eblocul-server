@@ -1,10 +1,6 @@
 import type { Prisma } from '../../../generated/prisma/client.ts';
 
-export const UNIT_ID_SELECT = {
-    id: true,
-} satisfies Prisma.UnitSelect;
-
-const UNIT_STATE_SELECT = {
+export const UNIT_STATE_SELECT = {
     id: true,
     complexId: true,
     nodeId: true,

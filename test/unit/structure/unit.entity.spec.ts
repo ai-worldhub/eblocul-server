@@ -116,4 +116,29 @@ describe('UnitEntity', () => {
             expect.objectContaining({ code: 'STRUCTURE_UNIT_NUMBER_BLANK' }),
         );
     });
+
+    it('accepts a retry for the same node and type, whatever the number', () => {
+        const stored = place('entrance', 'apartment', 3, '12');
+
+        expect(() =>
+            stored.acceptRetry(place('entrance', 'apartment', null, '12A')),
+        ).not.toThrow();
+    });
+
+    it('refuses a retry for another node or of another type', () => {
+        const stored = place('line', 'house');
+        const elsewhere = UnitEntity.restore({
+            ...stored.view(),
+            nodeId: COMPLEX_ID,
+        });
+
+        for (const retry of [place('line', 'duplex'), elsewhere]) {
+            expect(() => stored.acceptRetry(retry)).toThrowError(
+                expect.objectContaining({
+                    code: 'STRUCTURE_ID_TAKEN',
+                    details: { id: UNIT_ID },
+                }),
+            );
+        }
+    });
 });

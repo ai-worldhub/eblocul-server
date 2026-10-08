@@ -1,4 +1,5 @@
 import { addressOf, nodeNameOf } from '../rules/labels.ts';
+import { StructureError } from '../structure.errors.ts';
 import {
     assertChildKind,
     assertRootKind,
@@ -54,6 +55,19 @@ export class NodeEntity {
             address: addressOf(input.address),
             createdAt: input.now,
         });
+    }
+
+    acceptRetry(retry: NodeEntity): void {
+        if (
+            this.snapshot.parentId !== retry.snapshot.parentId ||
+            this.snapshot.kind !== retry.snapshot.kind
+        ) {
+            throw new StructureError(
+                'STRUCTURE_ID_TAKEN',
+                'This id already belongs to another node',
+                { id: retry.snapshot.id },
+            );
+        }
     }
 
     view(): NodeSnapshot {
