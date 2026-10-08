@@ -10,6 +10,7 @@ import {
     Matches,
     Max,
     Min,
+    MinLength,
     validateSync,
 } from 'class-validator';
 
@@ -39,6 +40,8 @@ const NAME_LIST = /^[a-z0-9_]+(,[a-z0-9_]+)*$/;
 const WORKER_CONCURRENCY_MAX = 64;
 const POLL_INTERVAL_MIN_MS = 10;
 const POLL_INTERVAL_MAX_MS = 60_000;
+const PROXY_HOPS_MAX = 8;
+const KEY_SECRET_MIN_LENGTH = 32;
 
 export class EnvironmentVariables {
     @IsIn(ENVIRONMENTS)
@@ -83,6 +86,15 @@ export class EnvironmentVariables {
     @IsString()
     SEED_ADMIN_PASSWORD?: string;
 
+    @IsInt()
+    @Min(0)
+    @Max(PROXY_HOPS_MAX)
+    TRUSTED_PROXY_HOPS: number;
+
+    @IsString()
+    @MinLength(KEY_SECRET_MIN_LENGTH)
+    THROTTLE_KEY_SECRET: string;
+
     @IsString()
     @IsNotEmpty()
     MAIL_SMTP_HOST: string;
@@ -111,6 +123,18 @@ const originProblems = (env: EnvironmentVariables): string[] => {
     ];
 };
 
+const isUnset = (value: unknown): boolean =>
+    value === undefined ||
+    value === null ||
+    (typeof value === 'string' && value.trim() === '');
+
+const proxyHopsProblems = (config: Record<string, unknown>): string[] =>
+    isUnset(config['TRUSTED_PROXY_HOPS'])
+        ? [
+              'TRUSTED_PROXY_HOPS: must be set to the number of proxies in front of the application, 0 for none',
+          ]
+        : [];
+
 export const validateEnv = (
     config: Record<string, unknown>,
 ): EnvironmentVariables => {
@@ -127,6 +151,7 @@ export const validateEnv = (
             ? ['SESSION_COOKIE_SECURE: must be true in production']
             : []),
         ...originProblems(env),
+        ...proxyHopsProblems(config),
     ];
 
     if (problems.length > 0) {

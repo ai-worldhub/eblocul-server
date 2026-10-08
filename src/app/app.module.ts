@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { IdentityModule } from '../core/identity/index.ts';
 import { JobsModule } from '../core/jobs/index.ts';
+import { ThrottleModule } from '../core/throttle/index.ts';
 import { SetupConfigModule } from '../shared/configs/setup-config.module.ts';
 import { DbModule } from '../shared/db/db.module.ts';
 import { ClockModule } from '../shared/clock/clock.module.ts';
@@ -17,6 +18,7 @@ import { AppLoggingModule } from '../shared/logging/logging.module.ts';
         HealthModule,
         AppLoggingModule.register(),
         JobsModule,
+        ThrottleModule,
         IdentityModule,
     ],
     controllers: [],

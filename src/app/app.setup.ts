@@ -16,13 +16,12 @@ import { EventLogger } from '../shared/logging/event-logger.ts';
 import { toValidationException } from '../shared/http/validation.ts';
 
 export const configureApp = (app: NestExpressApplication): void => {
+    const config = app.get(ConfigService);
     app.setGlobalPrefix('/api/v1');
 
-    app.set('trust proxy', 1);
+    app.set('trust proxy', config.get<number>('TRUSTED_PROXY_HOPS') ?? 0);
     app.enableCors({
-        origin: parseOriginList(
-            app.get(ConfigService).get<string>('WEB_PANEL_ORIGINS') ?? '',
-        ),
+        origin: parseOriginList(config.get<string>('WEB_PANEL_ORIGINS') ?? ''),
         credentials: true,
     });
     app.useGlobalPipes(
