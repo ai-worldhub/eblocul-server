@@ -46,7 +46,7 @@ paths:
 | `configs/` | чтение и проверка переменных окружения                             |
 | `db/`      | `DbService` — клиент Prisma, `Transactions` — транзакции, тип `Tx` |
 | `logging/` | `EventLogger`, id запроса, маскировка секретов                     |
-| `http/`    | формат ошибки, ошибки валидации, `ListQuery`, курсор для списков   |
+| `http/`    | формат ошибки, валидация, `ListQuery`, курсор, пометки эндпоинтов  |
 | `clock/`   | `Clock` — текущее время                                            |
 | `ids/`     | `Ids` — id записей                                                 |
 | `health/`  | `GET /api/v1/health`                                               |
