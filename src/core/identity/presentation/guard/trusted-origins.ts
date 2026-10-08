@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-
-const SEPARATOR = ',';
+import { parseOriginList } from '../../../../shared/configs/env.validation.ts';
 
 @Injectable()
 export class TrustedOrigins {
@@ -9,10 +8,7 @@ export class TrustedOrigins {
 
     constructor(config: ConfigService) {
         this._origins = new Set(
-            config
-                .getOrThrow<string>('WEB_PANEL_ORIGINS')
-                .split(SEPARATOR)
-                .filter((origin) => origin !== ''),
+            parseOriginList(config.getOrThrow<string>('WEB_PANEL_ORIGINS')),
         );
     }
 

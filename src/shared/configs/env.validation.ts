@@ -23,6 +23,17 @@ const SWITCHES = ['true', 'false'] as const;
 type Switch = (typeof SWITCHES)[number];
 
 const ORIGIN_LIST = /^https?:\/\/[^\s,/]+(,https?:\/\/[^\s,/]+)*$/;
+const ORIGIN_SEPARATOR = ',';
+const ORIGIN_WILDCARD = '*';
+const SECURE_ORIGIN = 'https://';
+
+export const parseOriginList = (value: string): string[] =>
+    value.split(ORIGIN_SEPARATOR).filter((origin) => origin !== '');
+
+const isExactOrigin = (value: string): boolean =>
+    !value.includes(ORIGIN_WILDCARD) &&
+    URL.canParse(value) &&
+    new URL(value).origin === value;
 
 const NAME_LIST = /^[a-z0-9_]+(,[a-z0-9_]+)*$/;
 const WORKER_CONCURRENCY_MAX = 64;
@@ -83,6 +94,23 @@ export class EnvironmentVariables {
     MAIL_FROM: string;
 }
 
+const originProblems = (env: EnvironmentVariables): string[] => {
+    const origins = parseOriginList(
+        typeof env.WEB_PANEL_ORIGINS === 'string' ? env.WEB_PANEL_ORIGINS : '',
+    );
+    return [
+        ...(origins.every(isExactOrigin)
+            ? []
+            : [
+                  'WEB_PANEL_ORIGINS: each origin must be exact, as the browser sends it',
+              ]),
+        ...(env.NODE_ENV === 'production' &&
+        origins.some((origin) => !origin.startsWith(SECURE_ORIGIN))
+            ? ['WEB_PANEL_ORIGINS: must be https in production']
+            : []),
+    ];
+};
+
 export const validateEnv = (
     config: Record<string, unknown>,
 ): EnvironmentVariables => {
@@ -98,6 +126,7 @@ export const validateEnv = (
         env.SESSION_COOKIE_SECURE !== 'true'
             ? ['SESSION_COOKIE_SECURE: must be true in production']
             : []),
+        ...originProblems(env),
     ];
 
     if (problems.length > 0) {

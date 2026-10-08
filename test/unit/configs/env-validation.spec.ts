@@ -32,6 +32,17 @@ describe('validateEnv', () => {
         ).toBe('true');
     });
 
+    it('refuses to start production with a panel origin that is not https', () => {
+        expect(() =>
+            validateEnv({
+                ...VALID,
+                NODE_ENV: 'production',
+                WEB_PANEL_ORIGINS:
+                    'https://panel.eblocul.invalid,http://localhost:5173',
+            }),
+        ).toThrow('WEB_PANEL_ORIGINS: must be https in production');
+    });
+
     it('accepts only a list of exact panel origins', () => {
         expect(
             validateEnv({
@@ -50,6 +61,17 @@ describe('validateEnv', () => {
             expect(() =>
                 validateEnv({ ...VALID, WEB_PANEL_ORIGINS: origins }),
             ).toThrow('WEB_PANEL_ORIGINS');
+        }
+        for (const origins of [
+            'https://Panel.Eblocul.invalid',
+            'https://panel.eblocul.invalid:443',
+            'https://*.eblocul.invalid',
+            'https://user:pass@panel.eblocul.invalid',
+            'https://panel.eblocul.invalid?x=1',
+        ]) {
+            expect(() =>
+                validateEnv({ ...VALID, WEB_PANEL_ORIGINS: origins }),
+            ).toThrow('WEB_PANEL_ORIGINS: each origin must be exact');
         }
         const { WEB_PANEL_ORIGINS: _omitted, ...withoutOrigins } = VALID;
         expect(() => validateEnv(withoutOrigins)).toThrow('WEB_PANEL_ORIGINS');

@@ -10,20 +10,19 @@ import {
 } from '@nestjs/swagger';
 import { SESSION_COOKIE_NAME } from '../core/identity/index.ts';
 import { ERROR_STATUSES } from './error-statuses.ts';
+import { parseOriginList } from '../shared/configs/env.validation.ts';
 import { AppExceptionFilter } from '../shared/http/exception.filter.ts';
 import { EventLogger } from '../shared/logging/event-logger.ts';
 import { toValidationException } from '../shared/http/validation.ts';
-
-const ORIGIN_SEPARATOR = ',';
 
 export const configureApp = (app: NestExpressApplication): void => {
     app.setGlobalPrefix('/api/v1');
 
     app.set('trust proxy', 1);
     app.enableCors({
-        origin: (app.get(ConfigService).get<string>('WEB_PANEL_ORIGINS') ?? '')
-            .split(ORIGIN_SEPARATOR)
-            .filter((origin) => origin !== ''),
+        origin: parseOriginList(
+            app.get(ConfigService).get<string>('WEB_PANEL_ORIGINS') ?? '',
+        ),
         credentials: true,
     });
     app.useGlobalPipes(
