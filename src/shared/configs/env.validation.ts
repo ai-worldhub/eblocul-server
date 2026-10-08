@@ -19,6 +19,22 @@ export type Environment = (typeof ENVIRONMENTS)[number];
 const LOG_FORMATS = ['json', 'pretty'] as const;
 type LogFormat = (typeof LOG_FORMATS)[number];
 
+const SWITCHES = ['true', 'false'] as const;
+type Switch = (typeof SWITCHES)[number];
+
+const ORIGIN_LIST = /^https?:\/\/[^\s,/]+(,https?:\/\/[^\s,/]+)*$/;
+const ORIGIN_SEPARATOR = ',';
+const ORIGIN_WILDCARD = '*';
+const SECURE_ORIGIN = 'https://';
+
+export const parseOriginList = (value: string): string[] =>
+    value.split(ORIGIN_SEPARATOR).filter((origin) => origin !== '');
+
+const isExactOrigin = (value: string): boolean =>
+    !value.includes(ORIGIN_WILDCARD) &&
+    URL.canParse(value) &&
+    new URL(value).origin === value;
+
 const NAME_LIST = /^[a-z0-9_]+(,[a-z0-9_]+)*$/;
 const WORKER_CONCURRENCY_MAX = 64;
 const POLL_INTERVAL_MIN_MS = 10;
@@ -57,6 +73,16 @@ export class EnvironmentVariables {
     })
     DATABASE_URL: string;
 
+    @Matches(ORIGIN_LIST)
+    WEB_PANEL_ORIGINS: string;
+
+    @IsIn(SWITCHES)
+    SESSION_COOKIE_SECURE: Switch = 'true';
+
+    @IsOptional()
+    @IsString()
+    SEED_ADMIN_PASSWORD?: string;
+
     @IsString()
     @IsNotEmpty()
     MAIL_SMTP_HOST: string;
@@ -68,22 +94,45 @@ export class EnvironmentVariables {
     MAIL_FROM: string;
 }
 
+const originProblems = (env: EnvironmentVariables): string[] => {
+    const origins = parseOriginList(
+        typeof env.WEB_PANEL_ORIGINS === 'string' ? env.WEB_PANEL_ORIGINS : '',
+    );
+    return [
+        ...(origins.every(isExactOrigin)
+            ? []
+            : [
+                  'WEB_PANEL_ORIGINS: each origin must be exact, as the browser sends it',
+              ]),
+        ...(env.NODE_ENV === 'production' &&
+        origins.some((origin) => !origin.startsWith(SECURE_ORIGIN))
+            ? ['WEB_PANEL_ORIGINS: must be https in production']
+            : []),
+    ];
+};
+
 export const validateEnv = (
     config: Record<string, unknown>,
 ): EnvironmentVariables => {
     const env = plainToInstance(EnvironmentVariables, config, {
         enableImplicitConversion: true,
     });
-    const errors = validateSync(env, { skipMissingProperties: false });
+    const problems = [
+        ...validateSync(env, { skipMissingProperties: false }).map(
+            (error) =>
+                `${error.property}: ${Object.values(error.constraints ?? {}).join(', ')}`,
+        ),
+        ...(env.NODE_ENV === 'production' &&
+        env.SESSION_COOKIE_SECURE !== 'true'
+            ? ['SESSION_COOKIE_SECURE: must be true in production']
+            : []),
+        ...originProblems(env),
+    ];
 
-    if (errors.length > 0) {
-        const details = errors
-            .map(
-                (error) =>
-                    `${error.property}: ${Object.values(error.constraints ?? {}).join(', ')}`,
-            )
-            .join('; ');
-        throw new Error(`Invalid environment variables: ${details}`);
+    if (problems.length > 0) {
+        throw new Error(
+            `Invalid environment variables: ${problems.join('; ')}`,
+        );
     }
 
     return env;

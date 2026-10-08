@@ -1,3 +1,4 @@
+import { TestAdminSeed } from '../core/identity/index.ts';
 import type { LabSeedType } from '../shared/seeding/lab-seed.ts';
 
-export const LAB_SEEDS: readonly LabSeedType[] = [];
+export const LAB_SEEDS: readonly LabSeedType[] = [TestAdminSeed];

@@ -1,0 +1,32 @@
+import { parse } from 'cookie';
+import type { IncomingHttpHeaders } from 'node:http';
+import type { PresentedSession } from '../../application/services/session.service.ts';
+import { sessionRequired } from '../../domain/entities/session.entity.ts';
+import { SESSION_COOKIE_NAME } from './session-cookie.ts';
+
+const BEARER = /^Bearer +(\S+)$/i;
+
+export const sessionCookieOf = (
+    headers: IncomingHttpHeaders,
+): string | null => {
+    const value = parse(headers.cookie ?? '')[SESSION_COOKIE_NAME];
+    return value === undefined || value === '' ? null : value;
+};
+
+const bearerOf = (authorization: string): string | null =>
+    BEARER.exec(authorization)?.[1] ?? null;
+
+export const presentedSessionOf = (
+    headers: IncomingHttpHeaders,
+): PresentedSession | null => {
+    const cookie = sessionCookieOf(headers);
+    const authorization = headers.authorization ?? '';
+    const bearer = bearerOf(authorization);
+    if (cookie !== null && authorization !== '') {
+        throw sessionRequired();
+    }
+    if (cookie !== null) {
+        return { token: cookie, transport: 'cookie' };
+    }
+    return bearer === null ? null : { token: bearer, transport: 'header' };
+};

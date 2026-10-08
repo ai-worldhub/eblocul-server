@@ -1,5 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { HttpAdapterHost } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import {
@@ -7,7 +8,9 @@ import {
     type OpenAPIObject,
     SwaggerModule,
 } from '@nestjs/swagger';
+import { SESSION_COOKIE_NAME } from '../core/identity/index.ts';
 import { ERROR_STATUSES } from './error-statuses.ts';
+import { parseOriginList } from '../shared/configs/env.validation.ts';
 import { AppExceptionFilter } from '../shared/http/exception.filter.ts';
 import { EventLogger } from '../shared/logging/event-logger.ts';
 import { toValidationException } from '../shared/http/validation.ts';
@@ -16,6 +19,12 @@ export const configureApp = (app: NestExpressApplication): void => {
     app.setGlobalPrefix('/api/v1');
 
     app.set('trust proxy', 1);
+    app.enableCors({
+        origin: parseOriginList(
+            app.get(ConfigService).get<string>('WEB_PANEL_ORIGINS') ?? '',
+        ),
+        credentials: true,
+    });
     app.useGlobalPipes(
         new ValidationPipe({
             transform: true,
@@ -40,6 +49,7 @@ export const createOpenApiDocument = (app: INestApplication): OpenAPIObject => {
         .addServer('http://localhost:3000', 'local')
 
         .addSecurity('user-token', { type: 'http', scheme: 'bearer' })
+        .addCookieAuth(SESSION_COOKIE_NAME, { type: 'apiKey', in: 'cookie' })
         .build();
 
     return SwaggerModule.createDocument(app, config, { deepScanRoutes: true });
