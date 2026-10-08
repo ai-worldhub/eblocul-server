@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { IdentityModule } from '../core/identity/index.ts';
 import { JobsModule } from '../core/jobs/index.ts';
+import { StructureModule } from '../core/structure/index.ts';
 import { ThrottleModule } from '../core/throttle/index.ts';
 import { SetupConfigModule } from '../shared/configs/setup-config.module.ts';
 import { DbModule } from '../shared/db/db.module.ts';
@@ -20,6 +21,7 @@ import { AppLoggingModule } from '../shared/logging/logging.module.ts';
         JobsModule,
         ThrottleModule,
         IdentityModule,
+        StructureModule,
     ],
     controllers: [],
     providers: [],
