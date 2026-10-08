@@ -7,7 +7,7 @@ import { AccountService } from '../services/account.service.ts';
 export const TEST_ADMIN = {
     firstName: 'Test',
     lastName: 'Administrator',
-    phone: '+37300000000',
+    phone: '+37360000000',
     email: 'admin@example.com',
 } as const;
 
