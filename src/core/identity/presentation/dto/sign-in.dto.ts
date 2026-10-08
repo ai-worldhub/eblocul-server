@@ -1,7 +1,7 @@
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
-import { EMAIL_MAX_LENGTH } from '../../domain/email.ts';
-import { PASSWORD_MAX_LENGTH } from '../../domain/password-policy.ts';
+import { EMAIL_MAX_LENGTH } from '../../domain/rules/email.ts';
+import { PASSWORD_MAX_LENGTH } from '../../domain/rules/password-policy.ts';
 
 export namespace SignIn {
     @ApiSchema({ name: 'SignIn-AdminPanelRequest' })

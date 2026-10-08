@@ -1,5 +1,5 @@
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
-import type { SessionApplication } from '../../domain/session.entity.ts';
+import type { SessionApplication } from '../../domain/entities/session.entity.ts';
 
 const APPLICATIONS = [
     'admin_panel',

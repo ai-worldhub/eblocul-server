@@ -1,5 +1,5 @@
 import type { Response, Test } from 'supertest';
-import { AccountService } from '../../src/core/identity/application/account.service.ts';
+import { AccountService } from '../../src/core/identity/application/services/account.service.ts';
 import type { TestApp } from './test-app.factory.ts';
 
 export const PANEL_ORIGIN = 'https://panel.eblocul.invalid';

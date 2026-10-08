@@ -1,4 +1,4 @@
-import type { SessionApplication } from '../domain/session.entity.ts';
+import type { SessionApplication } from '../domain/entities/session.entity.ts';
 
 declare module '../../../shared/logging/log-events.ts' {
     interface LogEvents {

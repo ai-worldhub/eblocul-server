@@ -1,4 +1,4 @@
-import { IdentityError } from './identity.errors.ts';
+import { IdentityError } from '../identity.errors.ts';
 
 export type SessionApplication = 'admin_panel' | 'guard_panel' | 'resident_app';
 export type SessionTransport = 'cookie' | 'header';

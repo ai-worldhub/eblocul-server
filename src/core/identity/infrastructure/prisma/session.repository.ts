@@ -3,7 +3,7 @@ import type { Tx } from '../../../../shared/db/tx.ts';
 import {
     SessionEntity,
     type SessionSnapshot,
-} from '../../domain/session.entity.ts';
+} from '../../domain/entities/session.entity.ts';
 import type { SessionRepository } from '../../ports/session.repository.ts';
 import {
     SESSION_STATE_SELECT,

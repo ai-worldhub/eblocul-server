@@ -1,7 +1,7 @@
 import { parse } from 'cookie';
 import type { IncomingHttpHeaders } from 'node:http';
-import type { PresentedSession } from '../../application/session.service.ts';
-import { sessionRequired } from '../../domain/session.entity.ts';
+import type { PresentedSession } from '../../application/services/session.service.ts';
+import { sessionRequired } from '../../domain/entities/session.entity.ts';
 import { SESSION_COOKIE_NAME } from './session-cookie.ts';
 
 const BEARER = /^Bearer (\S+)$/;

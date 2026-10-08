@@ -1,5 +1,5 @@
 import type { Tx } from '../../../shared/db/tx.ts';
-import type { SessionEntity } from '../domain/session.entity.ts';
+import type { SessionEntity } from '../domain/entities/session.entity.ts';
 
 export abstract class SessionRepository {
     abstract add(tx: Tx, session: SessionEntity): Promise<void>;

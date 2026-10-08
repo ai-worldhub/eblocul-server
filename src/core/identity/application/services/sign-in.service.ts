@@ -1,14 +1,14 @@
 import { Injectable, type OnModuleInit } from '@nestjs/common';
-import { DbService } from '../../../shared/db/db.service.ts';
-import { Transactions } from '../../../shared/db/transactions.service.ts';
-import { EventLogger } from '../../../shared/logging/event-logger.ts';
-import { normalizeEmail } from '../domain/email.ts';
-import { IdentityError } from '../domain/identity.errors.ts';
-import type { SessionApplication } from '../domain/session.entity.ts';
-import { ACCOUNT_SIGN_IN_SELECT } from '../infrastructure/account.select.ts';
-import { PasswordHasher } from '../ports/password-hasher.port.ts';
-import { SessionTokenSource } from '../ports/session-token-source.port.ts';
-import './identity.log-events.ts';
+import { DbService } from '../../../../shared/db/db.service.ts';
+import { Transactions } from '../../../../shared/db/transactions.service.ts';
+import { EventLogger } from '../../../../shared/logging/event-logger.ts';
+import { normalizeEmail } from '../../domain/rules/email.ts';
+import { IdentityError } from '../../domain/identity.errors.ts';
+import type { SessionApplication } from '../../domain/entities/session.entity.ts';
+import { ACCOUNT_SIGN_IN_SELECT } from '../../infrastructure/account.select.ts';
+import { PasswordHasher } from '../../ports/password-hasher.port.ts';
+import { SessionTokenSource } from '../../ports/session-token-source.port.ts';
+import '../identity.log-events.ts';
 import { SessionService, type StartedSession } from './session.service.ts';
 
 const ADMIN_PANEL: SessionApplication = 'admin_panel';

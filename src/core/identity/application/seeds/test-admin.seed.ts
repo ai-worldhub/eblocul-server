@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LabSeed } from '../../../../shared/seeding/lab-seed.ts';
 import { IdentityError } from '../../domain/identity.errors.ts';
-import { AccountService } from '../account.service.ts';
+import { AccountService } from '../services/account.service.ts';
 
 export const TEST_ADMIN = {
     firstName: 'Test',

@@ -11,8 +11,8 @@ import {
 import type { IncomingMessage } from 'node:http';
 import { ErrorResponse } from '../../../shared/http/error.dto.ts';
 import { Public } from '../../../shared/http/public.decorator.ts';
-import { SessionService } from '../application/session.service.ts';
-import type { SessionContext } from '../domain/session.entity.ts';
+import { SessionService } from '../application/services/session.service.ts';
+import type { SessionContext } from '../domain/entities/session.entity.ts';
 import { CurrentSession } from './decorators/current-session.decorator.ts';
 import { Session } from './dto/session.dto.ts';
 import { presentedSessionOf } from './guard/presented-session.ts';

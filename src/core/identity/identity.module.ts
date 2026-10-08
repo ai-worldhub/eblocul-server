@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { AccountService } from './application/account.service.ts';
+import { AccountService } from './application/services/account.service.ts';
 import { TestAdminSeed } from './application/seeds/test-admin.seed.ts';
-import { SessionService } from './application/session.service.ts';
-import { SignInService } from './application/sign-in.service.ts';
+import { SessionService } from './application/services/session.service.ts';
+import { SignInService } from './application/services/sign-in.service.ts';
 import { ArgonPasswordHasher } from './infrastructure/node/argon-password-hasher.ts';
 import { CryptoSessionTokenSource } from './infrastructure/node/crypto-session-token-source.ts';
 import { PrismaSessionRepository } from './infrastructure/prisma/session.repository.ts';

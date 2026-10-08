@@ -2,7 +2,7 @@ import {
     type SessionApplication,
     SessionEntity,
     sessionIdleSeconds,
-} from '../../../src/core/identity/domain/session.entity.ts';
+} from '../../../src/core/identity/domain/entities/session.entity.ts';
 
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;

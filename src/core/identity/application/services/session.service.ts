@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { Clock } from '../../../shared/clock/clock.service.ts';
-import { DbService } from '../../../shared/db/db.service.ts';
-import { Transactions } from '../../../shared/db/transactions.service.ts';
-import type { Tx } from '../../../shared/db/tx.ts';
-import { Ids } from '../../../shared/ids/ids.service.ts';
-import { EventLogger } from '../../../shared/logging/event-logger.ts';
+import { Clock } from '../../../../shared/clock/clock.service.ts';
+import { DbService } from '../../../../shared/db/db.service.ts';
+import { Transactions } from '../../../../shared/db/transactions.service.ts';
+import type { Tx } from '../../../../shared/db/tx.ts';
+import { Ids } from '../../../../shared/ids/ids.service.ts';
+import { EventLogger } from '../../../../shared/logging/event-logger.ts';
 import {
     type SessionApplication,
     type SessionContext,
@@ -12,11 +12,11 @@ import {
     sessionIdleSeconds,
     sessionRequired,
     type SessionTransport,
-} from '../domain/session.entity.ts';
-import { SessionRepository } from '../ports/session.repository.ts';
-import { SessionTokenSource } from '../ports/session-token-source.port.ts';
-import './identity.log-events.ts';
-import { fingerprintOf } from './session-fingerprint.ts';
+} from '../../domain/entities/session.entity.ts';
+import { SessionRepository } from '../../ports/session.repository.ts';
+import { SessionTokenSource } from '../../ports/session-token-source.port.ts';
+import '../identity.log-events.ts';
+import { fingerprintOf } from '../session-fingerprint.ts';
 
 export type PresentedSession = {
     token: string;

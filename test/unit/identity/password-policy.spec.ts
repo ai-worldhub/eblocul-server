@@ -2,7 +2,7 @@ import { IdentityError } from '../../../src/core/identity/domain/identity.errors
 import {
     assertPasswordAcceptable,
     brokenPasswordRules,
-} from '../../../src/core/identity/domain/password-policy.ts';
+} from '../../../src/core/identity/domain/rules/password-policy.ts';
 
 describe('password policy', () => {
     it('accepts ten characters with letters and digits', () => {

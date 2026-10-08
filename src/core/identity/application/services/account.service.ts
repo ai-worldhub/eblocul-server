@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { Clock } from '../../../shared/clock/clock.service.ts';
-import { DbService } from '../../../shared/db/db.service.ts';
-import { Ids } from '../../../shared/ids/ids.service.ts';
-import { EventLogger } from '../../../shared/logging/event-logger.ts';
-import { normalizeEmail } from '../domain/email.ts';
-import { assertPasswordAcceptable } from '../domain/password-policy.ts';
-import { ACCOUNT_ID_SELECT } from '../infrastructure/account.select.ts';
-import { PasswordHasher } from '../ports/password-hasher.port.ts';
-import './identity.log-events.ts';
+import { Clock } from '../../../../shared/clock/clock.service.ts';
+import { DbService } from '../../../../shared/db/db.service.ts';
+import { Ids } from '../../../../shared/ids/ids.service.ts';
+import { EventLogger } from '../../../../shared/logging/event-logger.ts';
+import { normalizeEmail } from '../../domain/rules/email.ts';
+import { assertPasswordAcceptable } from '../../domain/rules/password-policy.ts';
+import { ACCOUNT_ID_SELECT } from '../../infrastructure/account.select.ts';
+import { PasswordHasher } from '../../ports/password-hasher.port.ts';
+import '../identity.log-events.ts';
 
 export type NewAccount = {
     firstName: string;

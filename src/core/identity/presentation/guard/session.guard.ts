@@ -6,9 +6,9 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { IncomingMessage } from 'node:http';
 import { IS_PUBLIC } from '../../../../shared/http/public.decorator.ts';
-import { SessionService } from '../../application/session.service.ts';
+import { SessionService } from '../../application/services/session.service.ts';
 import { IdentityError } from '../../domain/identity.errors.ts';
-import { sessionRequired } from '../../domain/session.entity.ts';
+import { sessionRequired } from '../../domain/entities/session.entity.ts';
 import type { SessionCarrier } from '../decorators/current-session.decorator.ts';
 import { presentedSessionOf, sessionCookieOf } from './presented-session.ts';
 import { type CookieResponse, SessionCookies } from './session-cookie.ts';

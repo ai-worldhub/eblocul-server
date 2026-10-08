@@ -1,6 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { LAB_SEEDS } from '../../../src/app/lab-seeds.ts';
-import { AccountService } from '../../../src/core/identity/application/account.service.ts';
+import { AccountService } from '../../../src/core/identity/application/services/account.service.ts';
 import {
     TEST_ADMIN,
     TestAdminSeed,

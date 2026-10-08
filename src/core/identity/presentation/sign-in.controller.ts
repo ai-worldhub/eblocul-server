@@ -9,7 +9,7 @@ import {
 } from '@nestjs/swagger';
 import { ErrorResponse } from '../../../shared/http/error.dto.ts';
 import { Public } from '../../../shared/http/public.decorator.ts';
-import { SignInService } from '../application/sign-in.service.ts';
+import { SignInService } from '../application/services/sign-in.service.ts';
 import { Session } from './dto/session.dto.ts';
 import { SignIn } from './dto/sign-in.dto.ts';
 import { type CookieResponse, SessionCookies } from './guard/session-cookie.ts';
