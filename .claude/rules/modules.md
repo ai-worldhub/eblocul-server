@@ -11,7 +11,7 @@ paths:
 ## Два вида модулей
 
 - **Ядро** — `src/core/<модуль>/`: `identity`, `structure`, `membership`, `authz`, `tenancy`,
-  `journal`, `jobs`, `recovery`, `files`, `notify`.
+  `journal`, `jobs`, `recovery`, `files`, `notify`, `throttle`.
 - **Прикладные** — `src/modules/<модуль>/`: `account`, `onboarding`, `billing`, `announcements`,
   `chats`, `tickets`, `guard`, `video`, `polls`, `neighbors`, `gates`, `governance`, `assistant`, `backoffice`.
 
@@ -20,7 +20,11 @@ paths:
 
 ## Зависимости ядра от ядра
 
-Разрешённых зависимостей пока нет: `identity` и `jobs` не импортируют ни одного модуля ядра.
+Разрешены только эти:
+
+- `identity → throttle` — счёт неверных попыток входа;
+- `throttle → jobs` — задание, которое удаляет отжившие счётчики.
+
 Новая зависимость ядра от ядра — вопрос владельцу проекта; после ответа она вносится в этот раздел.
 
 ## Публичный интерфейс
@@ -68,6 +72,43 @@ return this._transactions.run(async (tx) => {
 - **Доступ** проверяет только `authz`. Область видимости приходит из него и стоит в сигнатуре каждого запроса к данным.
 - **Внешние каналы** (SMS, push, почта) — только через `notify`.
 - **Журнал действий** пишется только через интерфейс `journal` и только в транзакции своего изменения.
+- **Лимиты и неверные попытки** считает только `throttle`. Своих таблиц счётчиков модули не заводят.
+
+## Лимиты и попытки
+
+Счёт идёт по ключу: email, телефон, id объекта, адрес клиента. В таблицах `throttle` лежит отпечаток ключа, а не он сам.
+
+- Правило объявляет модуль, которому оно нужно: числа лежат в его `domain/rules/`, само правило собирает
+  `defineAttemptRule` или `defineRateLimit`. Имя правила попыток — `<модуль>.<что>`: `identity.admin_password`.
+- **Частота** — `RateLimitService.spend(лимит, ключ)`: при превышении бросает 429 сам. Так считается и пауза
+  перед повторным действием: всплеск 1 и время возврата, равное паузе.
+- **Неверные попытки** — `AttemptLockService`, три шага:
+    - `begin(правило, ключ)` до проверки: попытка засчитывается заранее, иначе параллельные запросы проверят больше, чем разрешено;
+    - проверка выполняется всегда. Когда `attempt.isCounted` ложно, вход закрыт: сверка идёт с подставным значением,
+      настоящий секрет не проверяется. Так ответ закрытого входа занимает столько же времени, сколько неверный;
+    - при неудаче — `refusalOf(attempt)`: ошибка блокировки или `null`; при удаче — `clear(tx, правило, ключ)` в транзакции результата.
+- Неизвестный ключ считается так же, как известный: по ответу нельзя понять, существует ли аккаунт.
+
+```ts
+const attempt = await this._attempts.begin(PASSWORD_ATTEMPTS, email);
+const hash = attempt.isCounted ? storedHash : null;
+const isVerified = await this._hasher.verify(password, hash ?? this._decoyHash);
+if (hash === null || !isVerified) {
+    throw (
+        this._attempts.refusalOf(attempt) ??
+        new IdentityError(
+            'IDENTITY_CREDENTIALS_INVALID',
+            'Email or password is incorrect',
+        )
+    );
+}
+await this._transactions.run(async (tx) => {
+    await this._attempts.clear(tx, PASSWORD_ATTEMPTS, email);
+    return this._sessions.start(tx, { accountId, application });
+});
+```
+
+Как пометить эндпоинт лимитом по адресу — `api.md`.
 
 ## Взаимная зависимость и обработчики заданий
 
@@ -86,6 +127,8 @@ return this._transactions.run(async (tx) => {
   и типизируется только в коде своего модуля; `shared/` не обращается ни к одной модели.
 - `test/unit/schema/schema-conventions.spec.ts`: схема PostgreSQL модели и enum совпадает с именем файла схемы.
 - `test/unit/jobs/job-handlers-registry.spec.ts`: каждый обработчик задания внесён в `src/app/job-handlers.ts`.
+- `test/e2e/throttle/attempt-lock.e2e-spec.ts`: параллельные неверные попытки дают не больше проверок, чем разрешает правило;
+  закрытый вход и неизвестный email отвечают так же, как неверный пароль.
 
 Правила линта собирает `scripts/oxlint-config.ts`. `oxlint.json` руками не правится:
 изменение вносится в скрипт, затем `npm run lint:config`. Расхождение ловит тест `test/unit/lint/`.
@@ -96,4 +139,5 @@ return this._transactions.run(async (tx) => {
 - Внешний ключ между прикладными модулями.
 - Сетевой вызов внутри транзакции; идемпотентность обработчика.
 - Проверка доступа в обход `authz`; журнал вне транзакции; внешний канал в обход `notify`.
+- Свой счётчик попыток или лимит в обход `throttle`; проверка секрета до `begin`; настоящий секрет, проверенный при закрытом входе.
 - Зависимость между модулями ядра, о которой не спросили владельца проекта.

@@ -72,6 +72,8 @@ export const ACCESS_ERROR_STATUSES = {
 
 - **Валидация запроса** — 400 `VALIDATION_FAILED`; в `details.fields` путь к полю и имена нарушенных правил: `{ "path": "profile.name", "rules": ["minLength"] }`.
 - **Лимит** — 429 с `details.retryAfterSeconds`; фильтр сам ставит заголовок `Retry-After`.
+  Бросает его только `throttle`: `THROTTLE_RATE_LIMITED` — слишком часто, `THROTTLE_ATTEMPTS_LOCKED` — закрыто после неверных попыток.
+  Клиент берёт время из тела: заголовок скрипту страницы с другого адреса не виден.
 
 ## Проверяется автоматически
 
