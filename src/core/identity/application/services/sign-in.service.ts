@@ -2,7 +2,13 @@ import { Injectable, type OnModuleInit } from '@nestjs/common';
 import { DbService } from '../../../../shared/db/db.service.ts';
 import { Transactions } from '../../../../shared/db/transactions.service.ts';
 import { EventLogger } from '../../../../shared/logging/event-logger.ts';
+import {
+    type Attempt,
+    AttemptLockService,
+    defineAttemptRule,
+} from '../../../throttle/index.ts';
 import { normalizeEmail } from '../../domain/rules/email.ts';
+import { ADMIN_PASSWORD_ATTEMPTS } from '../../domain/rules/password-attempts.ts';
 import { IdentityError } from '../../domain/identity.errors.ts';
 import type { SessionApplication } from '../../domain/entities/session.entity.ts';
 import { ACCOUNT_SIGN_IN_SELECT } from '../../infrastructure/account.select.ts';
@@ -12,6 +18,7 @@ import '../identity.log-events.ts';
 import { SessionService, type StartedSession } from './session.service.ts';
 
 const ADMIN_PANEL: SessionApplication = 'admin_panel';
+const PASSWORD_ATTEMPTS = defineAttemptRule(ADMIN_PASSWORD_ATTEMPTS);
 
 export type PasswordSignIn = {
     email: string;
@@ -27,6 +34,7 @@ export class SignInService implements OnModuleInit {
         private readonly _sessions: SessionService,
         private readonly _hasher: PasswordHasher,
         private readonly _tokens: SessionTokenSource,
+        private readonly _attempts: AttemptLockService,
         private readonly _db: DbService,
         private readonly _transactions: Transactions,
         private readonly _events: EventLogger,
@@ -37,24 +45,21 @@ export class SignInService implements OnModuleInit {
     }
 
     async signInToAdminPanel(input: PasswordSignIn): Promise<StartedSession> {
+        const email = normalizeEmail(input.email);
+        const attempt = await this._attempts.begin(PASSWORD_ATTEMPTS, email);
         const account = await this._db.account.findUnique({
-            where: { email: normalizeEmail(input.email) },
+            where: { email },
             select: ACCOUNT_SIGN_IN_SELECT,
         });
-        const hash = account?.password?.hash ?? null;
+        const hash = attempt.isCounted
+            ? (account?.password?.hash ?? null)
+            : null;
         const isVerified = await this._hasher.verify(
             input.password,
             hash ?? this._decoyHash,
         );
         if (account === null || hash === null || !isVerified) {
-            this._events.info('identity.sign_in_failed', {
-                accountId: account?.id ?? null,
-                application: ADMIN_PANEL,
-            });
-            throw new IdentityError(
-                'IDENTITY_CREDENTIALS_INVALID',
-                'Email or password is incorrect',
-            );
+            throw this._refusal(attempt, account?.id ?? null);
         }
 
         const rehashed = this._hasher.needsRehash(hash)
@@ -67,6 +72,7 @@ export class SignInService implements OnModuleInit {
                     data: { hash: rehashed },
                 });
             }
+            await this._attempts.clear(tx, PASSWORD_ATTEMPTS, email);
             return this._sessions.start(tx, {
                 accountId: account.id,
                 application: ADMIN_PANEL,
@@ -84,5 +90,21 @@ export class SignInService implements OnModuleInit {
             });
         }
         return started;
+    }
+
+    private _refusal(attempt: Attempt, accountId: string | null): Error {
+        this._events.info(
+            attempt.isCounted
+                ? 'identity.sign_in_failed'
+                : 'identity.sign_in_locked',
+            { accountId, application: ADMIN_PANEL },
+        );
+        return (
+            this._attempts.refusalOf(attempt) ??
+            new IdentityError(
+                'IDENTITY_CREDENTIALS_INVALID',
+                'Email or password is incorrect',
+            )
+        );
     }
 }

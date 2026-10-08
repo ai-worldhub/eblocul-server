@@ -1,0 +1,21 @@
+model RateBucket {
+  id     String   @id @db.Uuid
+  key    String   @unique
+  fullAt DateTime @map("full_at") @db.Timestamptz(3)
+
+  @@index([fullAt])
+  @@map("rate_buckets")
+  @@schema("throttle")
+}
+
+model AttemptSeries {
+  id         String    @id @db.Uuid
+  key        String    @unique
+  failures   Int
+  lockEndsAt DateTime? @map("lock_ends_at") @db.Timestamptz(3)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(3)
+
+  @@index([expiresAt])
+  @@map("attempt_series")
+  @@schema("throttle")
+}

@@ -6,6 +6,7 @@ import {
     ApiOkResponse,
     ApiOperation,
     ApiTags,
+    ApiTooManyRequestsResponse,
     ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import type { IncomingMessage } from 'node:http';
@@ -47,6 +48,7 @@ export class SessionController {
     @ApiNoContentResponse()
     @ApiUnauthorizedResponse({ type: ErrorResponse })
     @ApiForbiddenResponse({ type: ErrorResponse })
+    @ApiTooManyRequestsResponse({ type: ErrorResponse })
     async end(
         @Req() request: IncomingMessage,
         @Res({ passthrough: true }) response: CookieResponse,

@@ -5,11 +5,13 @@ import {
     ApiOkResponse,
     ApiOperation,
     ApiTags,
+    ApiTooManyRequestsResponse,
     ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import type { IncomingMessage } from 'node:http';
 import { ErrorResponse } from '../../../shared/http/error.dto.ts';
 import { Public } from '../../../shared/http/public.decorator.ts';
+import { RateLimit } from '../../../shared/http/rate-limit.decorator.ts';
 import { SignInService } from '../application/services/sign-in.service.ts';
 import { Session } from './dto/session.dto.ts';
 import { SignIn } from './dto/sign-in.dto.ts';
@@ -28,6 +30,7 @@ export class SignInController {
 
     @Post('admin-panel/login')
     @Public()
+    @RateLimit({ group: 'auth', burst: 30, refillSeconds: 2 })
     @RequireTrustedOrigin()
     @HttpCode(200)
     @ApiOperation({
@@ -40,6 +43,7 @@ export class SignInController {
     @ApiBadRequestResponse({ type: ErrorResponse })
     @ApiUnauthorizedResponse({ type: ErrorResponse })
     @ApiForbiddenResponse({ type: ErrorResponse })
+    @ApiTooManyRequestsResponse({ type: ErrorResponse })
     async signInToAdminPanel(
         @Body() body: SignIn.AdminPanelRequest,
         @Req() request: IncomingMessage,

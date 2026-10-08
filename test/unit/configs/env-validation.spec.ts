@@ -7,6 +7,8 @@ const VALID = {
     WEB_PANEL_ORIGINS: 'https://panel.eblocul.invalid',
     MAIL_SMTP_HOST: 'mailpit.invalid',
     MAIL_FROM: 'no-reply@eblocul.invalid',
+    TRUSTED_PROXY_HOPS: '0',
+    THROTTLE_KEY_SECRET: 'unit-secret-not-a-real-key-0123456789',
 };
 
 describe('validateEnv', () => {
@@ -75,5 +77,33 @@ describe('validateEnv', () => {
         }
         const { WEB_PANEL_ORIGINS: _omitted, ...withoutOrigins } = VALID;
         expect(() => validateEnv(withoutOrigins)).toThrow('WEB_PANEL_ORIGINS');
+    });
+
+    it('refuses to start until it is told how many proxies stand in front', () => {
+        const { TRUSTED_PROXY_HOPS: _omitted, ...withoutHops } = VALID;
+
+        expect(() => validateEnv(withoutHops)).toThrow('TRUSTED_PROXY_HOPS');
+        expect(() =>
+            validateEnv({ ...withoutHops, NODE_ENV: 'production' }),
+        ).toThrow('TRUSTED_PROXY_HOPS');
+        for (const hops of ['', '-1', '1.5', 'one', '9']) {
+            expect(() =>
+                validateEnv({ ...VALID, TRUSTED_PROXY_HOPS: hops }),
+            ).toThrow('TRUSTED_PROXY_HOPS');
+        }
+        expect(validateEnv(VALID).TRUSTED_PROXY_HOPS).toBe(0);
+        expect(
+            validateEnv({ ...VALID, TRUSTED_PROXY_HOPS: '2' })
+                .TRUSTED_PROXY_HOPS,
+        ).toBe(2);
+    });
+
+    it('refuses to start without a long enough key for the limit fingerprints', () => {
+        const { THROTTLE_KEY_SECRET: _omitted, ...withoutSecret } = VALID;
+
+        expect(() => validateEnv(withoutSecret)).toThrow('THROTTLE_KEY_SECRET');
+        expect(() =>
+            validateEnv({ ...VALID, THROTTLE_KEY_SECRET: 'too-short' }),
+        ).toThrow('THROTTLE_KEY_SECRET');
     });
 });

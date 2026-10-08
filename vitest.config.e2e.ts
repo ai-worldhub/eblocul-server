@@ -10,6 +10,8 @@ export default defineConfig({
             JOBS_POLL_INTERVAL_MS: '20',
             WEB_PANEL_ORIGINS: 'https://panel.eblocul.invalid',
             SEED_ADMIN_PASSWORD: 'e2e-password-not-real-1',
+            TRUSTED_PROXY_HOPS: '0',
+            THROTTLE_KEY_SECRET: 'e2e-secret-not-a-real-key-0123456789',
             MAIL_SMTP_HOST: 'mailpit.invalid',
             MAIL_SMTP_PORT: '1025',
             MAIL_FROM: 'no-reply@eblocul.invalid',

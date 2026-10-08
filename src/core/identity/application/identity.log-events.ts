@@ -12,6 +12,10 @@ declare module '../../../shared/logging/log-events.ts' {
             accountId: string | null;
             application: SessionApplication;
         };
+        'identity.sign_in_locked': {
+            accountId: string | null;
+            application: SessionApplication;
+        };
         'identity.session_renewed': { accountId: string; sessionId: string };
         'identity.signed_out': { accountId: string; sessionId: string };
     }
