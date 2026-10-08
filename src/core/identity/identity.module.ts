@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { ThrottleModule } from '../throttle/index.ts';
 import { AccountService } from './application/services/account.service.ts';
 import { TestAdminSeed } from './application/seeds/test-admin.seed.ts';
 import { SessionService } from './application/services/session.service.ts';
@@ -17,6 +18,7 @@ import { SignInController } from './presentation/sign-in.controller.ts';
 import { TrustedOrigins } from './presentation/guard/trusted-origins.ts';
 
 @Module({
+    imports: [ThrottleModule],
     controllers: [SignInController, SessionController],
     providers: [
         AccountService,
