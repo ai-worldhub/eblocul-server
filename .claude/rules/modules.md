@@ -16,8 +16,12 @@ paths:
   `chats`, `tickets`, `guard`, `video`, `polls`, `neighbors`, `gates`, `governance`, `assistant`, `backoffice`.
 
 Зависимости направлены вниз: `app → modules → core → shared`. Прикладные модули друг от
-друга не зависят. Ядро не знает о прикладных модулях. Перечня зависимостей между модулями
-ядра пока нет: новая зависимость ядра от ядра — вопрос владельцу проекта.
+друга не зависят. Ядро не знает о прикладных модулях.
+
+## Зависимости ядра от ядра
+
+Разрешённых зависимостей пока нет: `identity` и `jobs` не импортируют ни одного модуля ядра.
+Новая зависимость ядра от ядра — вопрос владельцу проекта; после ответа она вносится в этот раздел.
 
 ## Публичный интерфейс
 
@@ -27,8 +31,8 @@ paths:
 
 ```ts
 export { MembershipModule } from './membership.module.ts';
-export { MembershipService } from './application/membership.service.ts';
-export type { MembershipView } from './domain/membership-view.ts';
+export { MembershipService } from './application/services/membership.service.ts';
+export type { MembershipView } from './domain/entities/membership.entity.ts';
 export { MEMBERSHIP_ERROR_STATUSES } from './presentation/membership.error-statuses.ts';
 ```
 
@@ -40,7 +44,7 @@ export { MEMBERSHIP_ERROR_STATUSES } from './presentation/membership.error-statu
   Каждое такое представление вносится в список `REFERENCE_VIEWS` теста владения.
 - Внешний ключ между модулями — только в сторону ядра: на аккаунт, узел, объект, членство, файл.
   Прикладные модули друг на друга не ссылаются: связь — id без внешнего ключа и интерфейс модуля.
-- У каждого модуля своя схема PostgreSQL: `@@schema("<модуль>")` у каждой модели и enum. Таблица `users` остаётся в `public`.
+- У каждого модуля своя схема PostgreSQL: `@@schema("<модуль>")` у каждой модели и enum. В `public` моделей нет.
 
 ## Как модули взаимодействуют
 
