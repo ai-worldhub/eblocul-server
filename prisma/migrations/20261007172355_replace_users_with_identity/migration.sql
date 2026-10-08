@@ -16,7 +16,7 @@ CREATE TYPE "identity"."session_application" AS ENUM ('admin_panel', 'guard_pane
 CREATE TYPE "identity"."session_transport" AS ENUM ('cookie', 'header');
 
 -- DropTable
-DROP TABLE "users";
+DROP TABLE "public"."users";
 
 -- CreateTable
 CREATE TABLE "identity"."accounts" (
