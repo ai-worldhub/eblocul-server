@@ -10,6 +10,14 @@ const PARALLELISM = 1;
 const SALT_BYTES = 16;
 const TAG_BYTES = 32;
 
+const NORMAL_FORM = 'NFKC';
+const SALT_MIN_BYTES = 8;
+const TAG_MIN_BYTES = 16;
+const MEMORY_PER_LANE_MIN_KIB = 8;
+const MEMORY_MAX_KIB = 1_048_576;
+const PASSES_MAX = 16;
+const PARALLELISM_MAX = 16;
+
 const ENCODED =
     /^\$argon2id\$v=(\d+)\$m=(\d+),t=(\d+),p=(\d+)\$([A-Za-z0-9+/]+)\$([A-Za-z0-9+/]+)$/;
 
@@ -44,7 +52,7 @@ const derive = (
         argon2(
             ALGORITHM,
             {
-                message: Buffer.from(password, 'utf8'),
+                message: Buffer.from(password.normalize(NORMAL_FORM), 'utf8'),
                 nonce: salt,
                 tagLength,
                 ...parameters,
@@ -59,13 +67,24 @@ const derive = (
         );
     });
 
+const isDerivable = (decoded: Decoded): boolean =>
+    decoded.version === VERSION &&
+    decoded.parallelism >= 1 &&
+    decoded.parallelism <= PARALLELISM_MAX &&
+    decoded.passes >= 1 &&
+    decoded.passes <= PASSES_MAX &&
+    decoded.memory >= MEMORY_PER_LANE_MIN_KIB * decoded.parallelism &&
+    decoded.memory <= MEMORY_MAX_KIB &&
+    decoded.salt.length >= SALT_MIN_BYTES &&
+    decoded.tag.length >= TAG_MIN_BYTES;
+
 const decode = (encoded: string): Decoded | null => {
     const match = ENCODED.exec(encoded);
     if (match === null) {
         return null;
     }
     const [, version, memory, passes, parallelism, salt = '', tag = ''] = match;
-    return {
+    const decoded: Decoded = {
         version: Number(version),
         memory: Number(memory),
         passes: Number(passes),
@@ -73,6 +92,7 @@ const decode = (encoded: string): Decoded | null => {
         salt: Buffer.from(salt, 'base64'),
         tag: Buffer.from(tag, 'base64'),
     };
+    return isDerivable(decoded) ? decoded : null;
 };
 
 @Injectable()
@@ -86,7 +106,7 @@ export class ArgonPasswordHasher implements PasswordHasher {
 
     async verify(password: string, hash: string): Promise<boolean> {
         const decoded = decode(hash);
-        if (decoded === null || decoded.version !== VERSION) {
+        if (decoded === null) {
             return false;
         }
         const { salt, tag, memory, passes, parallelism } = decoded;
@@ -103,7 +123,6 @@ export class ArgonPasswordHasher implements PasswordHasher {
         const decoded = decode(hash);
         return (
             decoded === null ||
-            decoded.version !== VERSION ||
             decoded.memory !== CURRENT.memory ||
             decoded.passes !== CURRENT.passes ||
             decoded.parallelism !== CURRENT.parallelism ||
