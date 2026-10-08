@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { TestHouseSeed } from './application/seeds/test-house.seed.ts';
+import { TestQuarterSeed } from './application/seeds/test-quarter.seed.ts';
 import { TreeBuildingService } from './application/services/tree-building.service.ts';
 import { TreeReadingService } from './application/services/tree-reading.service.ts';
 import { PrismaNodeRepository } from './infrastructure/prisma/node.repository.ts';
@@ -12,6 +14,8 @@ import { UnitRepository } from './ports/unit.repository.ts';
     providers: [
         TreeBuildingService,
         TreeReadingService,
+        TestHouseSeed,
+        TestQuarterSeed,
         { provide: NodeRepository, useClass: PrismaNodeRepository },
         { provide: UnitRepository, useClass: PrismaUnitRepository },
         { provide: TreeQueries, useClass: PrismaTreeQueries },
