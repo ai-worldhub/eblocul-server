@@ -2,7 +2,7 @@ import { createParamDecorator, type ExecutionContext } from '@nestjs/common';
 import {
     type SessionContext,
     sessionRequired,
-} from '../domain/session.entity.ts';
+} from '../../domain/session.entity.ts';
 
 export type SessionCarrier = {
     currentSession?: SessionContext;
