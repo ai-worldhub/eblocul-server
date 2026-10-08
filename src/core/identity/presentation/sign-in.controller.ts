@@ -12,9 +12,9 @@ import { Public } from '../../../shared/http/public.decorator.ts';
 import { SignInService } from '../application/sign-in.service.ts';
 import { Session } from './dto/session.dto.ts';
 import { SignIn } from './dto/sign-in.dto.ts';
-import { type CookieResponse, SessionCookies } from './session-cookie.ts';
+import { type CookieResponse, SessionCookies } from './guard/session-cookie.ts';
 import { toCurrentSession } from './session.mapper.ts';
-import { RequireTrustedOrigin } from './trusted-origin.decorator.ts';
+import { RequireTrustedOrigin } from './guard/trusted-origin.decorator.ts';
 
 @ApiTags('auth')
 @Controller('auth')

@@ -2,7 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import {
     type CookieResponse,
     SessionCookies,
-} from '../../../src/core/identity/presentation/session-cookie.ts';
+} from '../../../src/core/identity/presentation/guard/session-cookie.ts';
 
 const THIRTY_DAYS_SECONDS = 2_592_000;
 

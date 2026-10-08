@@ -1,4 +1,4 @@
-import { presentedSessionOf } from '../../../src/core/identity/presentation/presented-session.ts';
+import { presentedSessionOf } from '../../../src/core/identity/presentation/guard/presented-session.ts';
 
 describe('presentedSessionOf', () => {
     it('finds nothing in a request without a session', () => {

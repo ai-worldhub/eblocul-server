@@ -11,10 +11,10 @@ import { PasswordHasher } from './ports/password-hasher.port.ts';
 import { SessionRepository } from './ports/session.repository.ts';
 import { SessionTokenSource } from './ports/session-token-source.port.ts';
 import { SessionController } from './presentation/session.controller.ts';
-import { SessionCookies } from './presentation/session-cookie.ts';
-import { SessionGuard } from './presentation/session.guard.ts';
+import { SessionCookies } from './presentation/guard/session-cookie.ts';
+import { SessionGuard } from './presentation/guard/session.guard.ts';
 import { SignInController } from './presentation/sign-in.controller.ts';
-import { TrustedOrigins } from './presentation/trusted-origins.ts';
+import { TrustedOrigins } from './presentation/guard/trusted-origins.ts';
 
 @Module({
     controllers: [SignInController, SessionController],

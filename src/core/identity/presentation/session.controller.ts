@@ -15,12 +15,12 @@ import { SessionService } from '../application/session.service.ts';
 import type { SessionContext } from '../domain/session.entity.ts';
 import { CurrentSession } from './current-session.decorator.ts';
 import { Session } from './dto/session.dto.ts';
-import { presentedSessionOf } from './presented-session.ts';
+import { presentedSessionOf } from './guard/presented-session.ts';
 import {
     type CookieResponse,
     SESSION_COOKIE_NAME,
     SessionCookies,
-} from './session-cookie.ts';
+} from './guard/session-cookie.ts';
 import { toCurrentSession } from './session.mapper.ts';
 
 @ApiTags('auth')
