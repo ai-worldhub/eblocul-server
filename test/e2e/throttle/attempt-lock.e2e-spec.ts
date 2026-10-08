@@ -242,6 +242,37 @@ describe('Lock after wrong sign-in attempts (e2e)', () => {
         ]);
     });
 
+    it('counts simultaneous sign-ins before it checks them, so the sixth right password has to be sent again', async () => {
+        await createAdmin(testApp);
+        const hasher = testApp.app.get(PasswordHasher);
+        const verify = hasher.verify.bind(hasher);
+        let arrived = 0;
+        let open = (): void => undefined;
+        const allArrived = new Promise<void>((resolve) => {
+            open = resolve;
+        });
+        vi.spyOn(hasher, 'verify').mockImplementation(
+            async (password, hash) => {
+                arrived += 1;
+                if (arrived === MAX_FAILURES + 1) {
+                    open();
+                }
+                await allArrived;
+                return verify(password, hash);
+            },
+        );
+
+        const responses = await Promise.all(
+            Array.from({ length: MAX_FAILURES + 1 }, () => signIn(testApp)),
+        );
+
+        const refused = responses.filter(({ status }) => status !== 200);
+        expect(responses).toHaveLength(MAX_FAILURES + 1);
+        expect(refused.map(refusalOf)).toEqual([lockedAnswer(LOCK_SECONDS)]);
+        await signIn(testApp).expect(200);
+        expect(await testApp.db.attemptSeries.count()).toBe(0);
+    });
+
     it('keeps the lock when the application is started again', async () => {
         await createAdmin(testApp);
         await failTimes(MAX_FAILURES);
