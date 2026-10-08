@@ -6,25 +6,21 @@ export const PASSWORD_MAX_LENGTH = 256;
 const LETTER = /\p{L}/u;
 const DIGIT = /\p{Nd}/u;
 
+const lengthOf = (password: string): number => Array.from(password).length;
+
 export type PasswordRule = 'min_length' | 'max_length' | 'letter' | 'digit';
 
-export const brokenPasswordRules = (password: string): PasswordRule[] => {
-    const length = Array.from(password).length;
-    const broken: PasswordRule[] = [];
-    if (length < PASSWORD_MIN_LENGTH) {
-        broken.push('min_length');
-    }
-    if (length > PASSWORD_MAX_LENGTH) {
-        broken.push('max_length');
-    }
-    if (!LETTER.test(password)) {
-        broken.push('letter');
-    }
-    if (!DIGIT.test(password)) {
-        broken.push('digit');
-    }
-    return broken;
-};
+type RuleCheck = readonly [PasswordRule, (password: string) => boolean];
+
+const RULES: readonly RuleCheck[] = [
+    ['min_length', (password) => lengthOf(password) >= PASSWORD_MIN_LENGTH],
+    ['max_length', (password) => lengthOf(password) <= PASSWORD_MAX_LENGTH],
+    ['letter', (password) => LETTER.test(password)],
+    ['digit', (password) => DIGIT.test(password)],
+];
+
+export const brokenPasswordRules = (password: string): PasswordRule[] =>
+    RULES.filter(([, holds]) => !holds(password)).map(([rule]) => rule);
 
 export const assertPasswordAcceptable = (password: string): void => {
     const rules = brokenPasswordRules(password);
