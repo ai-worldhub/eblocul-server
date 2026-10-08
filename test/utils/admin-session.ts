@@ -12,7 +12,7 @@ const SESSION_COOKIE = 'eblocul_session';
 export const ADMIN = {
     firstName: 'Test',
     lastName: 'Administrator',
-    phone: '+37300000001',
+    phone: '+37300100001',
     email: 'admin@example.com',
     password: 'correct-horse-42',
 } as const;
@@ -21,11 +21,11 @@ export type Credentials = { email: string; password: string };
 
 export type IssuedCookie = { value: string; attributes: string[] };
 
-export const createAdmin = (testApp: TestApp): Promise<string> =>
+export const createAdmin = (testApp: Pick<TestApp, 'app'>): Promise<string> =>
     testApp.app.get(AccountService).createWithPassword(ADMIN);
 
 export const signIn = (
-    testApp: TestApp,
+    testApp: Pick<TestApp, 'http'>,
     credentials: Credentials = ADMIN,
 ): Test =>
     testApp.http().post(LOGIN_PATH).set('Origin', PANEL_ORIGIN).send({
