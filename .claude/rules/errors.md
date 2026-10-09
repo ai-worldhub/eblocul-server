@@ -83,7 +83,8 @@ export const ACCESS_ERROR_STATUSES = {
 
 ## Проверяется автоматически
 
-- `tsc`: таблица модуля содержит все его коды отказов клиенту и ни одного кода сбоя.
+- `tsc`: таблица модуля содержит все коды типа, которым она описана. У `journal` это тип отказов клиенту: код сбоя в таблицу не внести.
+  В `authz`, `identity` и `throttle` типы ещё не разделены, и четыре кода сбоя со статусом 500 стоят в таблицах — их перенос идёт отдельной веткой.
 - `test/unit/errors/error-statuses-registry.spec.ts`: каждая таблица из `*.error-statuses.ts` есть в `ERROR_STATUSES` с тем же статусом.
 - oxlint: `application/` и `infrastructure/` не импортируют `HttpException` и его наследников; `domain/` не импортирует Nest вообще.
 - `test/e2e/errors/errors.e2e-spec.ts`: каждая строка таблицы «Что делает фильтр», формат ошибки валидации, `Retry-After` у 429, `requestId` в теле и заголовке.
