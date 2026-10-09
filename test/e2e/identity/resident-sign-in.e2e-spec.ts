@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Response, Test } from 'supertest';
 import { ResidentSignInService } from '../../../src/core/identity/application/services/resident-sign-in.service.ts';
-import { PhoneCodeRepository } from '../../../src/core/identity/ports/phone-code.repository.ts';
+import { PendingSignInRepository } from '../../../src/core/identity/ports/pending-sign-in.repository.ts';
 import { Clock } from '../../../src/shared/clock/clock.service.ts';
 import { Transactions } from '../../../src/shared/db/transactions.service.ts';
 import { accountRow } from '../../factories/identity.factory.ts';
@@ -86,7 +86,7 @@ describe('Resident sign-in by phone (e2e)', () => {
             expiresInSeconds: 600,
         });
         expect(doubles.sender.sent()).toEqual([
-            { phone: RESIDENT.phone, code: '111111' },
+            { phone: RESIDENT.phone, code: '111111', language: 'ro' },
         ]);
         expect(await testApp.db.account.count()).toBe(0);
 
@@ -109,6 +109,8 @@ describe('Resident sign-in by phone (e2e)', () => {
         });
         expect(await testApp.db.account.count()).toBe(0);
         expect(await testApp.db.session.count()).toBe(0);
+        expect(await testApp.db.phoneCode.count()).toBe(0);
+        expect(await testApp.db.pendingSignIn.count()).toBe(1);
 
         clock.advance(MINUTE_MS);
         const registered = await registration(
@@ -126,6 +128,7 @@ describe('Resident sign-in by phone (e2e)', () => {
             lastName: RESIDENT.lastName,
             phone: RESIDENT.phone,
             email: null,
+            language: 'ro',
             createdAt: clock.now(),
             phoneVerifiedAt: confirmedAt,
             password: null,
@@ -147,6 +150,7 @@ describe('Resident sign-in by phone (e2e)', () => {
             application: 'resident_app',
         });
         expect(await testApp.db.phoneCode.count()).toBe(0);
+        expect(await testApp.db.pendingSignIn.count()).toBe(0);
     });
 
     it('signs a registered number in and creates no second account', async () => {
@@ -346,7 +350,8 @@ describe('Resident sign-in by phone (e2e)', () => {
         await confirmCode(testApp, RESIDENT.phone, first).expect(401);
         await confirmCode(testApp, RESIDENT.phone, second).expect(200);
         expect(second).not.toBe(first);
-        expect(await testApp.db.phoneCode.count()).toBe(1);
+        expect(await testApp.db.phoneCode.count()).toBe(0);
+        expect(await testApp.db.pendingSignIn.count()).toBe(1);
     });
 
     it('accepts a code once', async () => {
@@ -410,10 +415,21 @@ describe('Resident sign-in by phone (e2e)', () => {
             firstName: '   ',
         }).expect(400);
 
+        const unknownLanguage = await requestCode(
+            testApp,
+            UNKNOWN_PHONE,
+            'en',
+        ).expect(400);
+
         expect(errorOf(noPhone)).toMatchObject({
             code: 'VALIDATION_FAILED',
-            details: { fields: [{ path: 'phone' }] },
+            details: { fields: [{ path: 'phone' }, { path: 'language' }] },
         });
+        expect(errorOf(unknownLanguage)).toMatchObject({
+            code: 'VALIDATION_FAILED',
+            details: { fields: [{ path: 'language', rules: ['isIn'] }] },
+        });
+        expect(doubles.sender.sent()).toHaveLength(1);
         expect(errorOf(shortCode)).toMatchObject({
             code: 'VALIDATION_FAILED',
             details: { fields: [{ path: 'code', rules: ['matches'] }] },
@@ -467,13 +483,106 @@ describe('Resident sign-in by phone (e2e)', () => {
         await registration(second.pending?.token ?? '').expect(201);
     });
 
-    it('voids the pending token when a new code is requested for the phone', async () => {
+    it('keeps the pending token when somebody asks for a new code for the phone', async () => {
         const first = await confirmSentCode(testApp, doubles, RESIDENT.phone);
         clock.advance(MINUTE_MS);
         await requestCode(testApp, RESIDENT.phone).expect(200);
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+            await confirmCode(testApp, RESIDENT.phone, WRONG_CODE);
+        }
 
-        await registration(first.pending?.token ?? '').expect(401);
-        expect(await testApp.db.account.count()).toBe(0);
+        await registration(first.pending?.token ?? '').expect(201);
+
+        expect(await testApp.db.account.count()).toBe(1);
+        expect(await testApp.db.pendingSignIn.count()).toBe(0);
+    });
+
+    it('replaces the pending token only when a new code of the phone is confirmed', async () => {
+        const first = await confirmSentCode(testApp, doubles, RESIDENT.phone);
+        clock.advance(MINUTE_MS);
+        const second = await confirmSentCode(testApp, doubles, RESIDENT.phone);
+
+        const stale = await registration(first.pending?.token ?? '').expect(
+            401,
+        );
+
+        expect(errorOf(stale).code).toBe('IDENTITY_PENDING_TOKEN_INVALID');
+        expect(await testApp.db.pendingSignIn.count()).toBe(1);
+        await registration(second.pending?.token ?? '').expect(201);
+        expect(await testApp.db.account.count()).toBe(1);
+    });
+
+    it('stores nothing when the code could not be sent and keeps the previous code working', async () => {
+        await requestCode(testApp, RESIDENT.phone).expect(200);
+        const delivered = doubles.sender.lastCodeFor(RESIDENT.phone);
+        const [before] = await testApp.db.phoneCode.findMany();
+        clock.advance(MINUTE_MS);
+        doubles.sender.failNext();
+
+        const failed = await requestCode(testApp, RESIDENT.phone).expect(500);
+
+        expect(errorOf(failed).code).toBe('INTERNAL_ERROR');
+        expect(await testApp.db.phoneCode.findMany()).toEqual([before]);
+        expect(doubles.sender.sent()).toHaveLength(1);
+        const confirmed = loginBodyOf(
+            await confirmCode(testApp, RESIDENT.phone, delivered).expect(200),
+        );
+        expect(confirmed.outcome).toBe('registration_required');
+    });
+
+    it('takes the language of a new profile from the request for the code', async () => {
+        await requestCode(testApp, RESIDENT.phone, 'ru').expect(200);
+        const confirmed = loginBodyOf(
+            await confirmCode(
+                testApp,
+                RESIDENT.phone,
+                doubles.sender.lastCodeFor(RESIDENT.phone),
+            ).expect(200),
+        );
+
+        await registration(confirmed.pending?.token ?? '').expect(201);
+
+        expect(doubles.sender.sent()).toMatchObject([{ language: 'ru' }]);
+        expect(await testApp.db.account.findFirstOrThrow()).toMatchObject({
+            phone: RESIDENT.phone,
+            language: 'ru',
+        });
+    });
+
+    it('does not change the language of an account that already exists', async () => {
+        await registerResident(testApp, doubles);
+        const accountId = await createAdmin(testApp);
+        clock.advance(MINUTE_MS);
+
+        await requestCode(testApp, RESIDENT.phone, 'ru').expect(200);
+        await confirmCode(
+            testApp,
+            RESIDENT.phone,
+            doubles.sender.lastCodeFor(RESIDENT.phone),
+        ).expect(200);
+        await requestCode(testApp, ADMIN.phone, 'ru').expect(200);
+        const pending = loginBodyOf(
+            await confirmCode(
+                testApp,
+                ADMIN.phone,
+                doubles.sender.lastCodeFor(ADMIN.phone),
+            ).expect(200),
+        ).pending;
+        await finish(CONSENT_PATH, {
+            pendingToken: pending?.token ?? '',
+            consentVersion: CONSENT_VERSION,
+        }).expect(200);
+
+        expect(
+            await testApp.db.account.findUniqueOrThrow({
+                where: { phone: RESIDENT.phone },
+            }),
+        ).toMatchObject({ language: 'ro' });
+        expect(
+            await testApp.db.account.findUniqueOrThrow({
+                where: { id: accountId },
+            }),
+        ).toMatchObject({ language: null });
     });
 
     it('stores the name without the spaces around it', async () => {
@@ -624,20 +733,20 @@ describe('Resident sign-in by phone (e2e)', () => {
             RESIDENT.phone,
         );
         const pendingToken = pending?.token ?? '';
-        const codes = testApp.app.get(PhoneCodeRepository);
+        const pendings = testApp.app.get(PendingSignInRepository);
 
         const { second } = await runOverlapped({
             db: testApp.db,
             transactions: testApp.app.get(Transactions),
             first: async (tx) => {
-                const held = await codes.lockByPendingTokenHash(
+                const held = await pendings.lockByTokenHash(
                     tx,
                     createHash('sha256').update(pendingToken).digest('hex'),
                 );
                 if (held === null) {
                     throw new Error('The pending token was not stored');
                 }
-                await codes.remove(tx, held);
+                await pendings.remove(tx, held);
             },
             second: () =>
                 testApp.app.get(ResidentSignInService).register({

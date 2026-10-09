@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '../../../../generated/prisma/client.ts';
 import type { Tx } from '../../../../shared/db/tx.ts';
 import {
     PhoneCodeEntity,
@@ -33,44 +32,11 @@ export class PrismaPhoneCodeRepository implements PhoneCodeRepository {
         return row === null ? null : PhoneCodeEntity.restore(row);
     }
 
-    lockByPhone(tx: Tx, phone: string): Promise<PhoneCodeEntity | null> {
-        return this._lock(tx, Prisma.sql`phone = ${phone}`);
-    }
-
-    lockByPendingTokenHash(
-        tx: Tx,
-        pendingTokenHash: string,
-    ): Promise<PhoneCodeEntity | null> {
-        return this._lock(
-            tx,
-            Prisma.sql`pending_token_hash = ${pendingTokenHash}`,
-        );
-    }
-
-    async save(tx: Tx, code: PhoneCodeEntity): Promise<void> {
-        const { id, pendingTokenHash, expiresAt, confirmedAt } = code.view();
-        await tx.phoneCode.updateMany({
-            where: { id },
-            data: { pendingTokenHash, expiresAt, confirmedAt },
-        });
-    }
-
-    async remove(tx: Tx, code: PhoneCodeEntity): Promise<void> {
-        await tx.phoneCode.deleteMany({ where: { id: code.view().id } });
-    }
-
-    async removeByPhone(tx: Tx, phone: string): Promise<void> {
-        await tx.phoneCode.deleteMany({ where: { phone } });
-    }
-
-    private async _lock(
-        tx: Tx,
-        condition: Prisma.Sql,
-    ): Promise<PhoneCodeEntity | null> {
+    async lockByPhone(tx: Tx, phone: string): Promise<PhoneCodeEntity | null> {
         const found = await tx.$queryRaw<Found[]>`
             SELECT id
             FROM identity.phone_codes
-            WHERE ${condition}
+            WHERE phone = ${phone}
             FOR UPDATE
         `;
         const id = found[0]?.id;
@@ -82,5 +48,13 @@ export class PrismaPhoneCodeRepository implements PhoneCodeRepository {
             select: PHONE_CODE_STATE_SELECT,
         });
         return PhoneCodeEntity.restore(row);
+    }
+
+    async remove(tx: Tx, code: PhoneCodeEntity): Promise<void> {
+        await tx.phoneCode.deleteMany({ where: { id: code.view().id } });
+    }
+
+    async removeByPhone(tx: Tx, phone: string): Promise<void> {
+        await tx.phoneCode.deleteMany({ where: { phone } });
     }
 }

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Clock } from '../../../../shared/clock/clock.service.ts';
+import { Ids } from '../../../../shared/ids/ids.service.ts';
 import { DbService } from '../../../../shared/db/db.service.ts';
 import { Transactions } from '../../../../shared/db/transactions.service.ts';
 import type { Tx } from '../../../../shared/db/tx.ts';
@@ -10,9 +11,13 @@ import {
     defineAttemptRule,
 } from '../../../throttle/index.ts';
 import {
+    PendingSignInEntity,
+    type PendingSignInSnapshot,
+    pendingTokenInvalid,
+} from '../../domain/entities/pending-sign-in.entity.ts';
+import {
     codeRefused,
     type CodeVerdict,
-    pendingTokenInvalid,
 } from '../../domain/entities/phone-code.entity.ts';
 import type { SessionApplication } from '../../domain/entities/session.entity.ts';
 import { normalizePersonName } from '../../domain/rules/person-name.ts';
@@ -22,6 +27,7 @@ import {
     PENDING_LIFETIME_SECONDS,
     RESIDENT_CODE_ATTEMPTS,
 } from '../../domain/rules/phone-code.ts';
+import { PendingSignInRepository } from '../../ports/pending-sign-in.repository.ts';
 import { PhoneCodeRepository } from '../../ports/phone-code.repository.ts';
 import { SessionTokenSource } from '../../ports/session-token-source.port.ts';
 import '../identity.log-events.ts';
@@ -68,6 +74,7 @@ type Completed = {
 export class ResidentSignInService {
     constructor(
         private readonly _codes: PhoneCodeRepository,
+        private readonly _pendings: PendingSignInRepository,
         private readonly _accounts: AccountService,
         private readonly _consents: ConsentService,
         private readonly _sessions: SessionService,
@@ -76,6 +83,7 @@ export class ResidentSignInService {
         private readonly _db: DbService,
         private readonly _transactions: Transactions,
         private readonly _clock: Clock,
+        private readonly _ids: Ids,
         private readonly _events: EventLogger,
     ) {}
 
@@ -100,9 +108,11 @@ export class ResidentSignInService {
                 if (code === null) {
                     throw codeRefused('invalid');
                 }
-                const { id: codeId } = code.view();
-                code.confirm(codeFingerprintOf(codeId, entry.code), now);
+                const { id: codeId, language } = code.view();
+                code.assertMatches(codeFingerprintOf(codeId, entry.code), now);
                 await this._attempts.clear(tx, CODE_ATTEMPTS, phone);
+                await this._codes.remove(tx, code);
+                await this._pendings.removeByPhone(tx, phone);
                 const account = await this._accounts.findForPhoneSignIn(
                     tx,
                     phone,
@@ -117,7 +127,6 @@ export class ResidentSignInService {
                         ? account.id
                         : null;
                 if (account !== null && account.consents.length > 0) {
-                    await this._codes.remove(tx, code);
                     const session = await this._sessions.start(tx, {
                         accountId: account.id,
                         application: RESIDENT_APP,
@@ -129,8 +138,16 @@ export class ResidentSignInService {
                     };
                 }
                 const token = this._tokens.next();
-                code.keepPending(fingerprintOf(token), now);
-                await this._codes.save(tx, code);
+                await this._pendings.add(
+                    tx,
+                    PendingSignInEntity.open({
+                        id: this._ids.next(),
+                        phone,
+                        tokenHash: fingerprintOf(token),
+                        language,
+                        now,
+                    }),
+                );
                 return {
                     codeId,
                     confirmation: {
@@ -171,24 +188,23 @@ export class ResidentSignInService {
         const now = this._clock.now();
         const { started, isAccountCreated } = await this._transactions.run(
             async (tx): Promise<Completed> => {
-                const code = await this._codes.lockByPendingTokenHash(
+                const pending = await this._pendings.lockByTokenHash(
                     tx,
                     fingerprintOf(entry.pendingToken),
                 );
-                if (code === null) {
+                if (pending === null) {
                     throw pendingTokenInvalid();
                 }
-                const phoneVerifiedAt = code.redeem(now);
-                const { phone } = code.view();
+                pending.assertOpen(now);
                 const existing = await this._accounts.findForPhoneSignIn(
                     tx,
-                    phone,
+                    pending.view().phone,
                 );
                 const accountId =
                     existing?.id ??
-                    (await this._register(tx, name, phone, phoneVerifiedAt));
+                    (await this._register(tx, name, pending.view()));
                 await this._consents.accept(tx, accountId);
-                await this._codes.remove(tx, code);
+                await this._pendings.remove(tx, pending);
                 return {
                     started: await this._sessions.start(tx, {
                         accountId,
@@ -214,8 +230,7 @@ export class ResidentSignInService {
     private _register(
         tx: Tx,
         name: PersonName | null,
-        phone: string,
-        phoneVerifiedAt: Date,
+        pending: PendingSignInSnapshot,
     ): Promise<string> {
         if (name === null) {
             throw pendingTokenInvalid();
@@ -223,8 +238,9 @@ export class ResidentSignInService {
         return this._accounts.registerByPhone(tx, {
             firstName: name.firstName,
             lastName: name.lastName,
-            phone,
-            phoneVerifiedAt,
+            phone: pending.phone,
+            language: pending.language,
+            phoneVerifiedAt: pending.confirmedAt,
         });
     }
 

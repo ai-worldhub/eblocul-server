@@ -73,9 +73,7 @@ describe('Fixed SMS code of the lab (e2e)', () => {
         );
         const db = production.app.get(DbService);
         expect(await db.session.count()).toBe(0);
-        expect(await db.phoneCode.count({ where: { confirmedAt: null } })).toBe(
-            1,
-        );
+        expect(await db.phoneCode.count()).toBe(0);
     });
 
     it('sends nothing and accepts no fixed code in the lab when the variable is not set', async () => {

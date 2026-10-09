@@ -17,10 +17,12 @@ import { SilentVerificationCodeSender } from './infrastructure/lab/silent-verifi
 import { ArgonPasswordHasher } from './infrastructure/node/argon-password-hasher.ts';
 import { CryptoSessionTokenSource } from './infrastructure/node/crypto-session-token-source.ts';
 import { CryptoVerificationCodeSource } from './infrastructure/node/crypto-verification-code-source.ts';
+import { PrismaPendingSignInRepository } from './infrastructure/prisma/pending-sign-in.repository.ts';
 import { PrismaPhoneCodeRepository } from './infrastructure/prisma/phone-code.repository.ts';
 import { PrismaSessionRepository } from './infrastructure/prisma/session.repository.ts';
 import { MissingVerificationCodeSender } from './infrastructure/sms/missing-verification-code-sender.ts';
 import { PasswordHasher } from './ports/password-hasher.port.ts';
+import { PendingSignInRepository } from './ports/pending-sign-in.repository.ts';
 import { PhoneCodeRepository } from './ports/phone-code.repository.ts';
 import { SessionRepository } from './ports/session.repository.ts';
 import { SessionTokenSource } from './ports/session-token-source.port.ts';
@@ -60,6 +62,10 @@ const fixedCodeOf = (config: ConfigService): string | null =>
         { provide: APP_GUARD, useClass: SessionGuard },
         { provide: SessionRepository, useClass: PrismaSessionRepository },
         { provide: PhoneCodeRepository, useClass: PrismaPhoneCodeRepository },
+        {
+            provide: PendingSignInRepository,
+            useClass: PrismaPendingSignInRepository,
+        },
         { provide: PasswordHasher, useClass: ArgonPasswordHasher },
         { provide: SessionTokenSource, useClass: CryptoSessionTokenSource },
         {

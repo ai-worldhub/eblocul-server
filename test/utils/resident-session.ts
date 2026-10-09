@@ -71,8 +71,11 @@ export const codeDoubles = (): CodeDoubles => {
 
 export const bearer = (token: string): string => `Bearer ${token}`;
 
-export const requestCode = (testApp: Http, phone: string): Test =>
-    testApp.http().post(CODES_PATH).send({ phone });
+export const requestCode = (
+    testApp: Http,
+    phone: string,
+    language: string = 'ro',
+): Test => testApp.http().post(CODES_PATH).send({ phone, language });
 
 export const confirmCode = (testApp: Http, phone: string, code: string): Test =>
     testApp.http().post(RESIDENT_LOGIN_PATH).send({ phone, code });

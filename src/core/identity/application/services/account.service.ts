@@ -8,6 +8,7 @@ import { EventLogger } from '../../../../shared/logging/event-logger.ts';
 import { normalizeEmail } from '../../domain/rules/email.ts';
 import { assertPasswordAcceptable } from '../../domain/rules/password-policy.ts';
 import { normalizePhone } from '../../domain/rules/phone.ts';
+import type { ProfileLanguage } from '../../domain/rules/profile-language.ts';
 import {
     ACCOUNT_ID_SELECT,
     ACCOUNT_NAME_SELECT,
@@ -31,6 +32,7 @@ export type NewPhoneAccount = {
     firstName: string;
     lastName: string;
     phone: string;
+    language: ProfileLanguage;
 };
 
 @Injectable()
@@ -95,6 +97,7 @@ export class AccountService {
                 lastName: input.lastName,
                 phone: normalizePhone(input.phone),
                 email: null,
+                language: input.language,
                 createdAt: this._clock.now(),
                 phoneVerifiedAt: input.phoneVerifiedAt,
             },

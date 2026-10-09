@@ -1,4 +1,7 @@
-import type { VerificationCodeSender } from '../../src/core/identity/ports/verification-code-sender.port.ts';
+import type {
+    CodeDelivery,
+    VerificationCodeSender,
+} from '../../src/core/identity/ports/verification-code-sender.port.ts';
 import type { VerificationCodeSource } from '../../src/core/identity/ports/verification-code-source.port.ts';
 
 const CODE_LENGTH = 6;
@@ -16,17 +19,24 @@ export class VerificationCodeSourceDouble implements VerificationCodeSource {
     }
 }
 
-export type SentCode = { phone: string; code: string };
-
 export class VerificationCodeSenderDouble implements VerificationCodeSender {
-    private _sent: SentCode[] = [];
+    private _sent: CodeDelivery[] = [];
+    private _isNextFailing = false;
 
-    send(phone: string, code: string): Promise<void> {
-        this._sent.push({ phone, code });
+    send(delivery: CodeDelivery): Promise<void> {
+        if (this._isNextFailing) {
+            this._isNextFailing = false;
+            return Promise.reject(new Error('The SMS channel is down'));
+        }
+        this._sent.push(delivery);
         return Promise.resolve();
     }
 
-    sent(): SentCode[] {
+    failNext(): void {
+        this._isNextFailing = true;
+    }
+
+    sent(): CodeDelivery[] {
         return [...this._sent];
     }
 
@@ -40,5 +50,6 @@ export class VerificationCodeSenderDouble implements VerificationCodeSender {
 
     clear(): void {
         this._sent = [];
+        this._isNextFailing = false;
     }
 }

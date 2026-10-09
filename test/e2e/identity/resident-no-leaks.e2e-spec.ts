@@ -211,6 +211,7 @@ describe('Resident sign-in keeps the phone, the code and the session id out of a
 
         const stored = JSON.stringify({
             codes: await probe.app.get(DbService).phoneCode.findMany(),
+            pendings: await probe.app.get(DbService).pendingSignIn.findMany(),
             sessions: await probe.app.get(DbService).session.findMany(),
         });
         for (const secret of [firstCode, secondCode, ...tokens]) {

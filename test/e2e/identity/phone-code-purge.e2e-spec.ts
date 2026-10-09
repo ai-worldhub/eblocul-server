@@ -94,10 +94,12 @@ describe('Purge of expired phone codes (e2e)', () => {
 
         moveTo(SLOT_AFTER_CODE_END);
         await purge();
-        expect(await testApp.db.phoneCode.count()).toBe(1);
+        expect(await testApp.db.pendingSignIn.count()).toBe(1);
+        expect(await purgeSlots()).toHaveLength(2);
 
         clock.advance(17 * MINUTE_MS);
         await purge();
+        expect(await testApp.db.pendingSignIn.count()).toBe(0);
         expect(await testApp.db.phoneCode.count()).toBe(0);
     });
 

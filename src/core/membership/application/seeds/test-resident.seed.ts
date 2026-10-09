@@ -10,6 +10,7 @@ export const TEST_RESIDENT = {
     firstName: 'Test',
     lastName: 'Resident',
     phone: '+37360000004',
+    language: 'ro',
     apartment: '1',
 } as const;
 
@@ -34,6 +35,7 @@ export class TestResidentSeed extends LabSeed {
                 firstName: TEST_RESIDENT.firstName,
                 lastName: TEST_RESIDENT.lastName,
                 phone: TEST_RESIDENT.phone,
+                language: TEST_RESIDENT.language,
             }));
         await this._transactions.run((tx) =>
             this._memberships.bind(tx, { accountId, unitId, role: 'owner' }),

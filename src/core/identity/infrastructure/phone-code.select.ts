@@ -4,10 +4,9 @@ export const PHONE_CODE_STATE_SELECT = {
     id: true,
     phone: true,
     codeHash: true,
-    pendingTokenHash: true,
+    language: true,
     createdAt: true,
     expiresAt: true,
-    confirmedAt: true,
 } satisfies Prisma.PhoneCodeSelect;
 
 export type PhoneCodeStateRow = Prisma.PhoneCodeGetPayload<{

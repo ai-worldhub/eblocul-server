@@ -1,11 +1,15 @@
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
-import { IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsIn, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import type { SessionApplication } from '../../domain/entities/session.entity.ts';
 import {
     PERSON_NAME_MAX_LENGTH,
     PERSON_NAME_PATTERN,
 } from '../../domain/rules/person-name.ts';
 import { PHONE_INPUT_MAX_LENGTH } from '../../domain/rules/phone.ts';
+import {
+    PROFILE_LANGUAGES,
+    type ProfileLanguage,
+} from '../../domain/rules/profile-language.ts';
 import {
     CODE_PATTERN,
     type CodeOutcome,
@@ -37,6 +41,15 @@ export namespace ResidentSignIn {
         @MinLength(1)
         @MaxLength(PHONE_INPUT_MAX_LENGTH)
         phone: string;
+
+        @ApiProperty({
+            enum: PROFILE_LANGUAGES,
+            example: 'ro',
+            description:
+                'Language of the application: the code is sent in it, and it becomes the language of the profile of a new account',
+        })
+        @IsIn(PROFILE_LANGUAGES)
+        language: ProfileLanguage;
     }
 
     @ApiSchema({ name: 'ResidentSignIn-CodeResponse' })

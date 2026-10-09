@@ -42,7 +42,10 @@ export class ResidentSignInController {
     requestCode(
         @Body() body: ResidentSignIn.CodeRequest,
     ): Promise<ResidentSignIn.CodeResponse> {
-        return this._codes.issue(body.phone);
+        return this._codes.issue({
+            phone: body.phone,
+            language: body.language,
+        });
     }
 
     @Post('login')

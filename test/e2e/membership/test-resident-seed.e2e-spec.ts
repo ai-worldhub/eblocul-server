@@ -58,6 +58,7 @@ describe('Seed membership.test_resident (e2e)', () => {
                 firstName: TEST_RESIDENT.firstName,
                 lastName: TEST_RESIDENT.lastName,
                 email: null,
+                language: 'ro',
                 password: null,
                 consents: [{ version: 'e2e-version-1' }],
                 unitMemberships: [

@@ -18,6 +18,7 @@ import {
     nextPhoneCodePurgeAt,
     PHONE_CODE_PURGE_BATCH,
 } from '../../domain/rules/phone-code-purge.ts';
+import type { ProfileLanguage } from '../../domain/rules/profile-language.ts';
 import { PhoneCodeRepository } from '../../ports/phone-code.repository.ts';
 import { VerificationCodeSender } from '../../ports/verification-code-sender.port.ts';
 import { VerificationCodeSource } from '../../ports/verification-code-source.port.ts';
@@ -26,6 +27,8 @@ import '../identity.log-events.ts';
 import { codeFingerprintOf } from '../session-fingerprint.ts';
 
 const RESEND_PAUSE = defineRateLimit(RESIDENT_CODE_RESEND);
+
+export type CodeRequest = { phone: string; language: ProfileLanguage };
 
 export type IssuedCode = {
     resendAfterSeconds: number;
@@ -47,16 +50,22 @@ export class PhoneCodeService {
         private readonly _events: EventLogger,
     ) {}
 
-    async issue(writtenPhone: string): Promise<IssuedCode> {
-        const phone = normalizePhone(writtenPhone);
+    async issue(request: CodeRequest): Promise<IssuedCode> {
+        const phone = normalizePhone(request.phone);
         await this._rates.spend(RESEND_PAUSE, phone);
         const id = this._ids.next();
         const secret = this._source.next();
+        await this._sender.send({
+            phone,
+            code: secret,
+            language: request.language,
+        });
         const now = this._clock.now();
         const code = PhoneCodeEntity.issue({
             id,
             phone,
             codeHash: codeFingerprintOf(id, secret),
+            language: request.language,
             now,
         });
         await this._transactions.run(async (tx) => {
@@ -64,7 +73,6 @@ export class PhoneCodeService {
             await this._codes.add(tx, code);
             await this._schedulePurge(tx, now);
         });
-        await this._sender.send(phone, secret);
         this._events.info('identity.code_sent', { codeId: id });
         return {
             resendAfterSeconds: CODE_RESEND_SECONDS,
@@ -74,25 +82,46 @@ export class PhoneCodeService {
 
     async purge(run: JobRun): Promise<void> {
         const now = this._clock.now();
-        let phoneCodes = 0;
-        for (;;) {
-            run.signal.throwIfAborted();
-            const { count } = await this._db.phoneCode.deleteMany({
+        const phoneCodes = await this._deleteInBatches(run, (limit) =>
+            this._db.phoneCode.deleteMany({
                 where: { expiresAt: { lte: now } },
-                limit: PHONE_CODE_PURGE_BATCH,
-            });
-            phoneCodes += count;
-            if (count < PHONE_CODE_PURGE_BATCH) {
-                break;
-            }
-        }
+                limit,
+            }),
+        );
+        const pendingSignIns = await this._deleteInBatches(run, (limit) =>
+            this._db.pendingSignIn.deleteMany({
+                where: { expiresAt: { lte: now } },
+                limit,
+            }),
+        );
         await this._transactions.run(async (tx) => {
-            if ((await tx.phoneCode.count({ take: 1 })) > 0) {
+            const isAnyLeft =
+                (await tx.phoneCode.count({ take: 1 })) > 0 ||
+                (await tx.pendingSignIn.count({ take: 1 })) > 0;
+            if (isAnyLeft) {
                 await this._schedulePurge(tx, now);
             }
             await run.complete(tx);
         });
-        this._events.info('identity.phone_codes_purged', { phoneCodes });
+        this._events.info('identity.phone_codes_purged', {
+            phoneCodes,
+            pendingSignIns,
+        });
+    }
+
+    private async _deleteInBatches(
+        run: JobRun,
+        deleteBatch: (limit: number) => Promise<{ count: number }>,
+    ): Promise<number> {
+        let deleted = 0;
+        for (;;) {
+            run.signal.throwIfAborted();
+            const { count } = await deleteBatch(PHONE_CODE_PURGE_BATCH);
+            deleted += count;
+            if (count < PHONE_CODE_PURGE_BATCH) {
+                return deleted;
+            }
+        }
     }
 
     private async _schedulePurge(tx: Tx, now: Date): Promise<void> {
