@@ -16,10 +16,12 @@ const REFERENCE_VIEWS: string[] = [
 
 const MODEL = /^model\s+(\w+)\s*\{/gm;
 const DELEGATE_CALL =
-    /\b(?:tx|_db|db)\.(\w+)\.(?:find\w+|create\w*|update\w*|upsert|delete\w*|count|aggregate|groupBy)\b/g;
+    /\b(?:tx|_db|db)\.(\w+)\.(find\w+|create\w*|update\w*|upsert|delete\w*|count|aggregate|groupBy)\b/g;
 const PRISMA_TYPE = /\bPrisma\.(\w+)\b/g;
+const WRITING_CALL = /^(?:create|update|upsert|delete)/;
+const WRITING_TYPE = /(?:Create|Update|Upsert|Delete)/;
 
-type Usage = { file: string; model: string };
+type Usage = { file: string; model: string; isWrite: boolean };
 
 const lowerFirst = (name: string): string =>
     name.charAt(0).toLowerCase() + name.slice(1);
@@ -45,27 +47,52 @@ const sourceFiles = (directory: string): string[] =>
               .map((file) => join(directory, file))
         : [];
 
-const usagesIn = (file: string, models: Map<string, string>): Usage[] => {
-    const text = readFileSync(join(ROOT, file), 'utf8');
+const usagesInText = (
+    text: string,
+    file: string,
+    models: Map<string, string>,
+): Usage[] => {
     const byDelegate = new Map(
         [...models.keys()].map((model) => [lowerFirst(model), model]),
     );
     const called = [...text.matchAll(DELEGATE_CALL)].flatMap((match) => {
         const model = byDelegate.get(match[1] ?? '');
-        return model === undefined ? [] : [model];
+        return model === undefined
+            ? []
+            : [{ model, isWrite: WRITING_CALL.test(match[2] ?? '') }];
     });
     const names = [...models.keys()].sort(
         (left, right) => right.length - left.length,
     );
     const typed = [...text.matchAll(PRISMA_TYPE)].flatMap((match) => {
-        const model = names.find((name) => (match[1] ?? '').startsWith(name));
-        return model === undefined ? [] : [model];
+        const type = match[1] ?? '';
+        const model = names.find((name) => type.startsWith(name));
+        return model === undefined
+            ? []
+            : [
+                  {
+                      model,
+                      isWrite: WRITING_TYPE.test(type.slice(model.length)),
+                  },
+              ];
     });
-    return [...new Set([...called, ...typed])].map((model) => ({
-        file,
-        model,
-    }));
+    const used = new Map<string, boolean>();
+    for (const { model, isWrite } of [...called, ...typed]) {
+        used.set(model, (used.get(model) ?? false) || isWrite);
+    }
+    return [...used].map(([model, isWrite]) => ({ file, model, isWrite }));
 };
+
+const usagesIn = (file: string, models: Map<string, string>): Usage[] =>
+    usagesInText(readFileSync(join(ROOT, file), 'utf8'), file, models);
+
+const isForeign = (
+    usage: Usage,
+    module: string | undefined,
+    models: Map<string, string>,
+): boolean =>
+    models.get(usage.model) !== module &&
+    (usage.isWrite || !REFERENCE_VIEWS.includes(usage.model));
 
 describe('table ownership', () => {
     const models = owners();
@@ -74,10 +101,8 @@ describe('table ownership', () => {
         const foreign = MODULE_ROOTS.flatMap((root) =>
             sourceFiles(root).flatMap((file) => {
                 const module = file.slice(root.length + 1).split('/')[0];
-                return usagesIn(file, models).filter(
-                    ({ model }) =>
-                        models.get(model) !== module &&
-                        !REFERENCE_VIEWS.includes(model),
+                return usagesIn(file, models).filter((usage) =>
+                    isForeign(usage, module, models),
                 );
             }),
         ).map(
@@ -86,6 +111,38 @@ describe('table ownership', () => {
         );
 
         expect(foreign).toEqual([]);
+    });
+
+    it('lets another module read a reference view and never write to it', () => {
+        const usagesOf = (code: string): string[] =>
+            usagesInText(code, 'src/modules/tickets/x.ts', models)
+                .filter((usage) => isForeign(usage, 'tickets', models))
+                .map(({ model }) => model)
+                .sort();
+
+        expect(
+            usagesOf(`
+                tx.node.findMany({ where });
+                tx.nodeAssignment.count();
+                const where: Prisma.NodeWhereInput = {};
+                type Row = Prisma.UnitGetPayload<{ select: typeof SELECT }>;
+            `),
+        ).toEqual([]);
+        expect(
+            usagesOf(`
+                tx.nodeAssignment.create({ data });
+                tx.unitMembership.updateMany({ where, data });
+                tx.node.deleteMany();
+                const row: Prisma.UnitCreateManyInput = input;
+                tx.account.findMany();
+            `),
+        ).toEqual([
+            'Account',
+            'Node',
+            'NodeAssignment',
+            'Unit',
+            'UnitMembership',
+        ]);
     });
 
     it('keeps shared/ away from every model', () => {
