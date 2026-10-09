@@ -1,6 +1,10 @@
 import type { Response } from 'supertest';
 import { AccessService } from '../../../src/core/authz/index.ts';
-import { NodeAssignmentService } from '../../../src/core/membership/index.ts';
+import type { SessionApplication } from '../../../src/core/identity/index.ts';
+import {
+    NodeAssignmentService,
+    ZoneTakeoverService,
+} from '../../../src/core/membership/index.ts';
 import { EventLogger } from '../../../src/shared/logging/event-logger.ts';
 import { Transactions } from '../../../src/shared/db/transactions.service.ts';
 import {
@@ -11,6 +15,7 @@ import {
 } from '../../utils/access-actors.ts';
 import {
     CHANGE_RECORDS,
+    CREATE_TICKET,
     HANDLE_REQUESTS,
     type ProbeRecord,
 } from '../../utils/access-probe.ts';
@@ -19,7 +24,11 @@ import { PANEL_ORIGIN } from '../../utils/admin-session.ts';
 import { buildWorld, type World } from '../../utils/access-world.ts';
 import { EventLoggerDouble } from '../../utils/event-logger.double.ts';
 import { membershipSetupOf } from '../../utils/membership-setup.ts';
-import { runOverlapped } from '../../utils/overlapped-transactions.ts';
+import {
+    type Gate,
+    gate,
+    runOverlapped,
+} from '../../utils/overlapped-transactions.ts';
 import { responseBody } from '../../utils/response-body.ts';
 
 const UNKNOWN_ID = '0192f0c1-7b3a-7c11-9a41-2f6d3c8e5b10';
@@ -553,15 +562,14 @@ describe('Access guard (e2e)', () => {
             grantId: string,
             nodeId: string,
             action = CHANGE_RECORDS,
+            application: SessionApplication = 'admin_panel',
         ): Promise<Awaited<ReturnType<AccessService['open']>>> =>
-            probe.app.get(AccessService).open(
-                {
-                    sessionId: world.quarter.id,
-                    accountId,
-                    application: 'admin_panel',
-                },
-                { grantId, action, target: { kind: 'node', nodeId } },
-            );
+            probe.app
+                .get(AccessService)
+                .open(
+                    { sessionId: world.quarter.id, accountId, application },
+                    { grantId, action, target: { kind: 'node', nodeId } },
+                );
 
         const transactions = (): Transactions => probe.app.get(Transactions);
 
@@ -677,6 +685,109 @@ describe('Access guard (e2e)', () => {
                     }),
                 ),
             ).rejects.toMatchObject({ code: 'AUTHZ_ACTION_FORBIDDEN' });
+        });
+
+        it('checks again the target the guard checked when the change does not name it', async () => {
+            const world = await buildWorld(probe);
+            const chiefId = await setup.addAccount();
+            const chief = await setup.assign(
+                chiefId,
+                world.quarter.id,
+                'chief_administrator',
+            );
+            const takeover = await setup.takeZone(chiefId, world.housesZone.id);
+            const access = await opened(
+                world,
+                chiefId,
+                chief.id,
+                world.line.id,
+            );
+            const confirmed = await transactions().run((tx) =>
+                probe.app.get(AccessService).confirm(tx, access),
+            );
+            await setup.returnZone(takeover.id);
+
+            expect(confirmed.complexId).toBe(world.quarter.id);
+            await expect(
+                transactions().run((tx) =>
+                    probe.app.get(AccessService).confirm(tx, access),
+                ),
+            ).rejects.toMatchObject({ code: 'AUTHZ_ACTION_FORBIDDEN' });
+        });
+
+        it('holds the membership of a resident the same way: its end waits for the change, and a change after it is refused', async () => {
+            const world = await buildWorld(probe);
+            const tenant = await resident(world.apartment.id);
+            const access = await opened(
+                world,
+                tenant.accountId,
+                tenant.grantId,
+                world.entrance.id,
+                CREATE_TICKET,
+                'resident_app',
+            );
+
+            const { first, second } = await runOverlapped({
+                db: probe.db,
+                transactions: transactions(),
+                first: (tx) => probe.app.get(AccessService).confirm(tx, access),
+                second: () => setup.endMembership(tenant.grantId),
+            });
+
+            expect(first.nodeIds).toContain(world.entrance.id);
+            expect(second.status).toBe('fulfilled');
+            await expect(
+                transactions().run((tx) =>
+                    probe.app.get(AccessService).confirm(tx, access),
+                ),
+            ).rejects.toMatchObject({ code: 'AUTHZ_GRANT_NOT_ACTIVE' });
+        });
+
+        it('lets one chief take two zones at once, each in a transaction that has confirmed his access', async () => {
+            const world = await buildWorld(probe);
+            const chiefId = await setup.addAccount();
+            const chief = await setup.assign(
+                chiefId,
+                world.quarter.id,
+                'chief_administrator',
+            );
+            const access = await opened(
+                world,
+                chiefId,
+                chief.id,
+                world.quarter.id,
+            );
+            const first = gate();
+            const second = gate();
+            const take = (
+                zoneId: string,
+                mine: Gate,
+                other: Gate,
+            ): Promise<unknown> =>
+                transactions().run(async (tx) => {
+                    await probe.app.get(AccessService).confirm(tx, access);
+                    mine.open();
+                    await other.opened;
+                    return probe.app.get(ZoneTakeoverService).takeZone(tx, {
+                        accountId: chiefId,
+                        nodeId: zoneId,
+                    });
+                });
+
+            const taken = await Promise.allSettled([
+                take(world.housesZone.id, first, second),
+                take(world.apartmentsZone.id, second, first),
+            ]);
+
+            expect(taken.map((result) => result.status)).toEqual([
+                'fulfilled',
+                'fulfilled',
+            ]);
+            expect(
+                await probe.db.nodeAssignment.count({
+                    where: { role: 'zone_takeover', endedAt: null },
+                }),
+            ).toBe(2);
         });
 
         it('reads again inside the transaction whether the zone still has no administrator', async () => {

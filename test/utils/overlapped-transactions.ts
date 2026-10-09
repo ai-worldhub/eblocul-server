@@ -10,9 +10,9 @@ export type Overlapped<A, B> = {
     second: PromiseSettledResult<B>;
 };
 
-type Gate = { open: () => void; opened: Promise<void> };
+export type Gate = { open: () => void; opened: Promise<void> };
 
-const gate = (): Gate => {
+export const gate = (): Gate => {
     let open: () => void = () => undefined;
     const opened = new Promise<void>((resolve) => {
         open = resolve;

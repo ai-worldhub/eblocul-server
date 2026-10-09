@@ -1,6 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '../../../../generated/prisma/client.ts';
 import type { Tx } from '../../../../shared/db/tx.ts';
+import type { SessionApplication } from '../../../identity/index.ts';
+import type {
+    AssignmentRole,
+    ResidentRole as MembershipResidentRole,
+} from '../../../membership/index.ts';
+import type {
+    NodeKind as StructureNodeKind,
+    UnitType as StructureUnitType,
+} from '../../../structure/index.ts';
 import type {
     AccessTarget,
     TargetReference,
@@ -80,6 +89,18 @@ type MembershipRow = {
     node_name: string;
 };
 
+type Same<Ours, Theirs> = [Ours] extends [Theirs]
+    ? [Theirs] extends [Ours]
+        ? true
+        : false
+    : false;
+
+true satisfies Same<AdministrationRole | 'zone_takeover', AssignmentRole>;
+true satisfies Same<ResidentRole, MembershipResidentRole>;
+true satisfies Same<NodeKind, StructureNodeKind>;
+true satisfies Same<UnitType, StructureUnitType>;
+true satisfies Same<Application, SessionApplication>;
+
 const TAKEOVER = 'zone_takeover';
 const ADMIN_PANEL: Application = 'admin_panel';
 const RESIDENT_APP: Application = 'resident_app';
@@ -112,7 +133,7 @@ export const grantSql = (key: GrantKey): Prisma.Sql => Prisma.sql`
     WHERE s.id = ${key.grantId}::uuid
       AND s.account_id = ${key.accountId}::uuid
       AND s.ended_at IS NULL
-      AND s.role <> 'zone_takeover'
+      AND s.role IN ('chief_administrator', 'administrator', 'chairman')
     UNION ALL
     SELECT
         'membership' AS kind,
@@ -132,6 +153,7 @@ export const grantSql = (key: GrantKey): Prisma.Sql => Prisma.sql`
     WHERE m.id = ${key.grantId}::uuid
       AND m.account_id = ${key.accountId}::uuid
       AND m.ended_at IS NULL
+      AND m.role IN ('owner', 'family_member', 'tenant')
 `;
 
 const targetFacts = Prisma.sql`
@@ -183,6 +205,12 @@ export const assignmentGrantsSql = (
     JOIN structure.nodes c ON c.id = n.complex_id
     WHERE s.account_id = ${accountId}::uuid
       AND s.ended_at IS NULL
+      AND s.role IN (
+          'chief_administrator',
+          'administrator',
+          'chairman',
+          'zone_takeover'
+      )
     ORDER BY s.started_at, s.id
 `;
 
@@ -208,6 +236,7 @@ export const membershipGrantsSql = (
     JOIN structure.nodes n ON n.id = a.ancestor_id
     WHERE m.account_id = ${accountId}::uuid
       AND m.ended_at IS NULL
+      AND m.role IN ('owner', 'family_member', 'tenant')
     ORDER BY m.started_at, m.id, a.depth DESC
 `;
 

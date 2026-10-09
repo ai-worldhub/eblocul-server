@@ -72,6 +72,7 @@ export class AccessService {
                         ? decision.grant.unitId
                         : null,
                 action: request.action,
+                target: request.target ?? null,
                 scope: decision.scope,
             };
         } catch (error) {
@@ -95,13 +96,14 @@ export class AccessService {
                 withTakeovers: reliesOnTakeovers(access.action, access.role),
             });
             const grant = await this._queries.grantOf(tx, key);
+            const checked = target ?? access.target;
             const { scope } = decide({
                 grant,
                 application: access.application,
                 action: access.action,
-                ...(grant === null || target === undefined
+                ...(grant === null || checked === null
                     ? {}
-                    : { target: await this._target(tx, target) }),
+                    : { target: await this._target(tx, checked) }),
             });
             return scope;
         } catch (error) {

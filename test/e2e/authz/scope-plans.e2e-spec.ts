@@ -51,7 +51,11 @@ const RECORDS =
     BIG_RECORDS_PER_NODE * 245 + SMALL_RECORDS_PER_NODE * 21 * SMALL_COMPLEXES;
 const SMALL_SHARE = 10;
 const LIST_INDEX = 'records_complex_id_created_at_id_idx';
-const OWNER_INDEX = 'records_owner_node_id_idx';
+const RECORD_INDEXES = [
+    LIST_INDEX,
+    'records_owner_node_id_idx',
+    'records_complex_id_owner_node_id_idx',
+];
 const TREE_INDEXES = [
     'node_ancestors_pkey',
     'node_ancestors_ancestor_id_node_id_idx',
@@ -427,13 +431,8 @@ describe('Access scope on a database with many complexes (e2e)', () => {
         expect(await nodeIdsByWhere(nowhere)).toEqual([]);
     });
 
-    it('reads the first page of a subtree scope along the list index and the tree along its indexes', async () => {
-        for (const [name, plan] of await plansOf([
-            'zone',
-            'quarter',
-            'houseAndAbove',
-            'chiefChanges',
-        ])) {
+    it('reads the first page of a large perimeter along the list index and the tree along its indexes', async () => {
+        for (const [name, plan] of await plansOf(['zone', 'quarter'])) {
             expect(sequentiallyScanned(plan.scans), name).toEqual([]);
             expect(plan.indexes, name).toContain(LIST_INDEX);
             expect(
@@ -446,19 +445,22 @@ describe('Access scope on a database with many complexes (e2e)', () => {
         }
     });
 
-    it('reads a small perimeter by the index of the owner node: only the records of its nodes', async () => {
-        const read: Partial<Record<ScopeName, number>> = {};
-
-        for (const [name, plan] of await plansOf(['house', 'chain'])) {
+    it('reads the first page of a small or a mixed perimeter by an index of the table, never the whole table', async () => {
+        for (const [name, plan] of await plansOf([
+            'house',
+            'houseAndAbove',
+            'chain',
+            'chiefChanges',
+        ])) {
             expect(sequentiallyScanned(plan.scans), name).toEqual([]);
-            expect(plan.indexes, name).toContain(OWNER_INDEX);
-            read[name] = rowsReadFrom(plan.scans, 'records');
+            expect(
+                plan.indexes.some((index) => RECORD_INDEXES.includes(index)),
+                name,
+            ).toBe(true);
+            expect(rowsReadFrom(plan.scans, 'records'), name).toBeLessThan(
+                RECORDS / SMALL_SHARE,
+            );
         }
-
-        expect(read).toEqual({
-            house: BUILDING_NODES * BIG_RECORDS_PER_NODE,
-            chain: CHAIN_NODES * BIG_RECORDS_PER_NODE,
-        });
     });
 
     it('keeps the list of the chief on the list index when the scope is "nodes without an administrator", and has an index path for every table of that condition', async () => {

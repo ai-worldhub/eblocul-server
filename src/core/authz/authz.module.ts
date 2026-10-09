@@ -6,7 +6,7 @@ import type { AccessAction } from './domain/rules/access-action.ts';
 import { PrismaAccessQueries } from './infrastructure/prisma/access-queries.ts';
 import { AccessQueries } from './ports/access-queries.port.ts';
 import {
-    ACCESS_ACTIONS,
+    REGISTERED_ACTIONS,
     AccessMarks,
 } from './presentation/guard/access-marks.ts';
 import { AccessGuard } from './presentation/guard/access.guard.ts';
@@ -24,7 +24,7 @@ export class AuthzModule {
                 AccessService,
                 GrantListService,
                 AccessMarks,
-                { provide: ACCESS_ACTIONS, useValue: actions },
+                { provide: REGISTERED_ACTIONS, useValue: actions },
                 { provide: APP_GUARD, useClass: AccessGuard },
                 { provide: AccessQueries, useClass: PrismaAccessQueries },
             ],

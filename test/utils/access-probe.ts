@@ -106,7 +106,7 @@ const ISSUE_CODE = defineAction({
     grants: { owner: ['chain'] },
 });
 
-const CREATE_TICKET = defineAction({
+export const CREATE_TICKET = defineAction({
     name: 'probe.create_ticket',
     kind: 'change',
     grants: RESIDENTS,
@@ -298,12 +298,9 @@ class AccessProbeController {
     @HttpCode(200)
     @Access(HANDLE_REQUESTS, { node: 'nodeId' })
     async handleRequests(
-        @Param('nodeId') nodeId: string,
         @CurrentAccess() access: AccessContext,
     ): Promise<Done> {
-        await this._transactions.run((tx) =>
-            this._access.confirm(tx, access, { kind: 'node', nodeId }),
-        );
+        await this._transactions.run((tx) => this._access.confirm(tx, access));
         return DONE;
     }
 

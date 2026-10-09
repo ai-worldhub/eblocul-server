@@ -19,7 +19,7 @@ import {
     type AccessMark,
 } from '../decorators/access.decorator.ts';
 
-export const ACCESS_ACTIONS = Symbol('ACCESS_ACTIONS');
+export const REGISTERED_ACTIONS = Symbol('REGISTERED_ACTIONS');
 
 type Handler = ReturnType<ExecutionContext['getHandler']>;
 type Controller = ReturnType<ExecutionContext['getClass']>;
@@ -59,7 +59,7 @@ export class AccessMarks implements OnApplicationBootstrap {
         private readonly _reflector: Reflector,
         private readonly _discovery: DiscoveryService,
         private readonly _scanner: MetadataScanner,
-        @Inject(ACCESS_ACTIONS)
+        @Inject(REGISTERED_ACTIONS)
         private readonly _actions: readonly AccessAction[],
     ) {}
 
