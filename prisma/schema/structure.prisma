@@ -1,0 +1,72 @@
+enum NodeKind {
+  quarter
+  zone
+  building
+  line
+  entrance
+
+  @@map("node_kind")
+  @@schema("structure")
+}
+
+enum UnitType {
+  apartment
+  townhouse
+  house
+  duplex
+
+  @@map("unit_type")
+  @@schema("structure")
+}
+
+model Node {
+  id        String   @id @db.Uuid
+  complexId String   @map("complex_id") @db.Uuid
+  kind      NodeKind
+  name      String
+  address   String?
+  createdAt DateTime @map("created_at") @db.Timestamptz(3)
+
+  complex      Node           @relation("NodeComplex", fields: [complexId], references: [id], onDelete: Restrict)
+  complexNodes Node[]         @relation("NodeComplex")
+  ancestors    NodeAncestor[] @relation("NodeAncestorNode")
+  descendants  NodeAncestor[] @relation("NodeAncestorAncestor")
+  units        Unit[]         @relation("UnitNode")
+  complexUnits Unit[]         @relation("UnitComplex")
+
+  @@index([complexId])
+  @@map("nodes")
+  @@schema("structure")
+}
+
+model NodeAncestor {
+  nodeId     String @map("node_id") @db.Uuid
+  ancestorId String @map("ancestor_id") @db.Uuid
+  depth      Int
+
+  node     Node @relation("NodeAncestorNode", fields: [nodeId], references: [id], onDelete: Restrict)
+  ancestor Node @relation("NodeAncestorAncestor", fields: [ancestorId], references: [id], onDelete: Restrict)
+
+  @@id([nodeId, ancestorId])
+  @@index([ancestorId, nodeId])
+  @@map("node_ancestors")
+  @@schema("structure")
+}
+
+model Unit {
+  id        String   @id @db.Uuid
+  complexId String   @map("complex_id") @db.Uuid
+  nodeId    String   @map("node_id") @db.Uuid
+  type      UnitType
+  number    String
+  floor     Int?
+  createdAt DateTime @map("created_at") @db.Timestamptz(3)
+
+  complex Node @relation("UnitComplex", fields: [complexId], references: [id], onDelete: Restrict)
+  node    Node @relation("UnitNode", fields: [nodeId], references: [id], onDelete: Restrict)
+
+  @@index([complexId])
+  @@unique([nodeId, number])
+  @@map("units")
+  @@schema("structure")
+}
