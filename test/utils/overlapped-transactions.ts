@@ -57,6 +57,7 @@ export const runOverlapped = async <A, B>(input: {
     });
     await Promise.race([worked.opened, first]);
     const second = input.transactions.run(input.second);
+    second.catch(() => undefined);
     const isBlocked = await waitUntilBlocked(input.db);
     release.open();
     const [firstResult, secondResult] = await Promise.allSettled([
