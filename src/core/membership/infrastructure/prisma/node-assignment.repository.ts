@@ -73,7 +73,7 @@ export class PrismaNodeAssignmentRepository implements NodeAssignmentRepository 
         return assignment;
     }
 
-    async lockActive(
+    async holdActive(
         tx: Tx,
         key: ActiveAssignmentKey,
     ): Promise<NodeAssignmentEntity | null> {
@@ -86,7 +86,7 @@ export class PrismaNodeAssignmentRepository implements NodeAssignmentRepository 
                   AND s.node_id = ${key.nodeId}::uuid
                   AND s.role = ${key.role}::membership.assignment_role
                   AND s.ended_at IS NULL
-                FOR UPDATE OF s
+                FOR SHARE OF s
             `,
         );
         return assignment;

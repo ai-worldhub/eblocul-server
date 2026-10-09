@@ -17,7 +17,7 @@ export abstract class NodeAssignmentRepository {
         tx: Tx,
         assignmentId: string,
     ): Promise<NodeAssignmentEntity | null>;
-    abstract lockActive(
+    abstract holdActive(
         tx: Tx,
         key: ActiveAssignmentKey,
     ): Promise<NodeAssignmentEntity | null>;

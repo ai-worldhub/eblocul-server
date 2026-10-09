@@ -38,7 +38,7 @@ export class ZoneTakeoverService {
         input: ZoneTakeover,
     ): Promise<NodeAssignmentSnapshot> {
         const zone = await lockedNodeOrRefuse(this._tree, tx, input.nodeId);
-        const chief = await this._assignments.lockActive(tx, {
+        const chief = await this._assignments.holdActive(tx, {
             accountId: input.accountId,
             nodeId: zone.complexId,
             role: CHIEF,
