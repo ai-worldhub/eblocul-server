@@ -4,7 +4,7 @@ import { defineFactory } from './define-factory.ts';
 const CREATED_AT = new Date('2026-10-01T09:00:00.000Z');
 const ID_PREFIX = '00000000-0000-7000-8000-';
 const ID_TAIL_LENGTH = 12;
-const PHONE_PREFIX = '+3730000';
+const PHONE_PREFIX = '+3736900';
 const PHONE_TAIL_LENGTH = 4;
 
 export const accountRow = defineFactory<Prisma.AccountCreateManyInput>(

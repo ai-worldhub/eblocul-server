@@ -11,6 +11,7 @@ import {
     Max,
     Min,
     MinLength,
+    ValidateIf,
     validateSync,
 } from 'class-validator';
 
@@ -42,6 +43,14 @@ const POLL_INTERVAL_MIN_MS = 10;
 const POLL_INTERVAL_MAX_MS = 60_000;
 const PROXY_HOPS_MAX = 8;
 const KEY_SECRET_MIN_LENGTH = 32;
+const CONSENT_VERSION = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+const SMS_CODE = /^\d{6}$/;
+const FIXED_CODE_ENVIRONMENT: Environment = 'lab';
+
+const isUnset = (value: unknown): boolean =>
+    value === undefined ||
+    value === null ||
+    (typeof value === 'string' && value.trim() === '');
 
 export class EnvironmentVariables {
     @IsIn(ENVIRONMENTS)
@@ -95,6 +104,13 @@ export class EnvironmentVariables {
     @MinLength(KEY_SECRET_MIN_LENGTH)
     THROTTLE_KEY_SECRET: string;
 
+    @Matches(CONSENT_VERSION)
+    LEGAL_CONSENT_VERSION: string;
+
+    @ValidateIf((env: EnvironmentVariables) => !isUnset(env.LAB_FIXED_SMS_CODE))
+    @Matches(SMS_CODE)
+    LAB_FIXED_SMS_CODE?: string;
+
     @IsString()
     @IsNotEmpty()
     MAIL_SMTP_HOST: string;
@@ -123,16 +139,20 @@ const originProblems = (env: EnvironmentVariables): string[] => {
     ];
 };
 
-const isUnset = (value: unknown): boolean =>
-    value === undefined ||
-    value === null ||
-    (typeof value === 'string' && value.trim() === '');
-
 const proxyHopsProblems = (config: Record<string, unknown>): string[] =>
     isUnset(config['TRUSTED_PROXY_HOPS'])
         ? [
               'TRUSTED_PROXY_HOPS: must be set to the number of proxies in front of the application, 0 for none',
           ]
+        : [];
+
+const fixedCodeProblems = (
+    env: EnvironmentVariables,
+    config: Record<string, unknown>,
+): string[] =>
+    !isUnset(config['LAB_FIXED_SMS_CODE']) &&
+    env.NODE_ENV !== FIXED_CODE_ENVIRONMENT
+        ? ['LAB_FIXED_SMS_CODE: is allowed only when NODE_ENV is lab']
         : [];
 
 export const validateEnv = (
@@ -152,6 +172,7 @@ export const validateEnv = (
             : []),
         ...originProblems(env),
         ...proxyHopsProblems(config),
+        ...fixedCodeProblems(env, config),
     ];
 
     if (problems.length > 0) {

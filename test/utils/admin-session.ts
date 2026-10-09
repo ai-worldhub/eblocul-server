@@ -12,7 +12,7 @@ const SESSION_COOKIE = 'eblocul_session';
 export const ADMIN = {
     firstName: 'Test',
     lastName: 'Administrator',
-    phone: '+37300100001',
+    phone: '+37360100001',
     email: 'admin@example.com',
     password: 'correct-horse-42',
 } as const;
