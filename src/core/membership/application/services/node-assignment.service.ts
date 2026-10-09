@@ -11,7 +11,8 @@ import {
 import { MembershipError } from '../../domain/membership.errors.ts';
 import {
     type AppointedRole,
-    endsTakeoversOfNode,
+    holdsZone,
+    returnsTakenZone,
 } from '../../domain/rules/assignment-places.ts';
 import { NodeAssignmentRepository } from '../../ports/node-assignment.repository.ts';
 import '../membership.log-events.ts';
@@ -47,15 +48,15 @@ export class NodeAssignmentService {
             role: input.role,
             now: this._clock.now(),
         });
-        const endsTakeovers = endsTakeoversOfNode(input.role, node);
-        if (endsTakeovers) {
-            await lockedNodeOrRefuse(this._tree, tx, node.id);
-        }
+        const isZoneHolder = holdsZone(input.role, node);
+        const holdersBefore = isZoneHolder
+            ? await this._holdersOfLockedZone(tx, node.id, input.role)
+            : 0;
         const stored = await this._assignments.addOrFindActive(tx, assignment);
         if (stored !== assignment) {
             return stored.view();
         }
-        if (endsTakeovers) {
+        if (isZoneHolder && returnsTakenZone(holdersBefore)) {
             await this._takeovers.endOnZone(tx, node.id);
         }
         this._events.info('membership.assigned', {
@@ -76,6 +77,7 @@ export class NodeAssignmentService {
                 { assignmentId },
             );
         }
+        await this._lockHeldZone(tx, assignment.view());
         if (!assignment.end(this._clock.now())) {
             return assignment.view();
         }
@@ -91,5 +93,29 @@ export class NodeAssignmentService {
             role: ended.role,
         });
         return ended;
+    }
+
+    private async _lockHeldZone(
+        tx: Tx,
+        held: NodeAssignmentSnapshot,
+    ): Promise<void> {
+        const node = await nodeOrRefuse(this._tree, tx, held.nodeId);
+        if (holdsZone(held.role, node)) {
+            await lockedNodeOrRefuse(this._tree, tx, node.id);
+        }
+    }
+
+    private async _holdersOfLockedZone(
+        tx: Tx,
+        zoneId: string,
+        role: AppointedRole,
+    ): Promise<number> {
+        await lockedNodeOrRefuse(this._tree, tx, zoneId);
+        const holders = await this._assignments.findActiveOnNode(
+            tx,
+            zoneId,
+            role,
+        );
+        return holders.length;
     }
 }

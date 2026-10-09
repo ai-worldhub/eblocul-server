@@ -338,7 +338,7 @@ describe('Zone takeover by the chief administrator (e2e)', () => {
             ]);
         });
 
-        it('loses the takeover when one more administrator of the zone is assigned', async () => {
+        it('keeps the takeover when one more administrator of the zone is assigned', async () => {
             const { chiefId, apartmentsZone } = await quarterWithChief();
             const firstAdminId = await setup.addAccount();
             const secondAdminId = await setup.addAccount();
@@ -348,6 +348,27 @@ describe('Zone takeover by the chief administrator (e2e)', () => {
                 'administrator',
             );
             const takeover = await setup.takeZone(chiefId, apartmentsZone.id);
+
+            await setup.assign(
+                secondAdminId,
+                apartmentsZone.id,
+                'administrator',
+            );
+
+            expect(await stored(takeover.id)).toEqual(takeover);
+        });
+
+        it('loses the takeover when the zone was left without administrators and gets one again', async () => {
+            const { chiefId, apartmentsZone } = await quarterWithChief();
+            const firstAdminId = await setup.addAccount();
+            const secondAdminId = await setup.addAccount();
+            const first = await setup.assign(
+                firstAdminId,
+                apartmentsZone.id,
+                'administrator',
+            );
+            const takeover = await setup.takeZone(chiefId, apartmentsZone.id);
+            await setup.endAssignment(first.id);
 
             await setup.assign(
                 secondAdminId,
@@ -412,6 +433,64 @@ describe('Zone takeover by the chief administrator (e2e)', () => {
             expect(await stored(administrator.id)).toEqual(administrator);
             expect(await stored(takeover.id)).toEqual(takeover);
             expect(await activeTakeoversOn(housesZone.id)).toBe(1);
+        });
+
+        it('returns the zone to an administrator assigned while its only administrator is being ended', async () => {
+            const { chiefId, apartmentsZone } = await quarterWithChief();
+            const firstAdminId = await setup.addAccount();
+            const secondAdminId = await setup.addAccount();
+            const only = await setup.assign(
+                firstAdminId,
+                apartmentsZone.id,
+                'administrator',
+            );
+            const takeover = await setup.takeZone(chiefId, apartmentsZone.id);
+
+            const { second } = await runOverlapped({
+                db: testApp.db,
+                transactions: testApp.app.get(Transactions),
+                first: (tx) =>
+                    testApp.app.get(NodeAssignmentService).end(tx, only.id),
+                second: (tx) =>
+                    testApp.app.get(NodeAssignmentService).assign(tx, {
+                        accountId: secondAdminId,
+                        nodeId: apartmentsZone.id,
+                        role: 'administrator',
+                    }),
+            });
+
+            expect(fulfilledValueOf(second)).toMatchObject({ endedAt: null });
+            expect((await stored(takeover.id)).endedAt).toEqual(clock.now());
+            expect(await activeTakeoversOn(apartmentsZone.id)).toBe(0);
+        });
+
+        it('keeps the takeover when the first administrator is ended after one more has been assigned', async () => {
+            const { chiefId, apartmentsZone } = await quarterWithChief();
+            const firstAdminId = await setup.addAccount();
+            const secondAdminId = await setup.addAccount();
+            const first = await setup.assign(
+                firstAdminId,
+                apartmentsZone.id,
+                'administrator',
+            );
+            const takeover = await setup.takeZone(chiefId, apartmentsZone.id);
+
+            const { second } = await runOverlapped({
+                db: testApp.db,
+                transactions: testApp.app.get(Transactions),
+                first: (tx) =>
+                    testApp.app.get(NodeAssignmentService).assign(tx, {
+                        accountId: secondAdminId,
+                        nodeId: apartmentsZone.id,
+                        role: 'administrator',
+                    }),
+                second: (tx) =>
+                    testApp.app.get(NodeAssignmentService).end(tx, first.id),
+            });
+
+            expect(fulfilledValueOf(second).endedAt).toEqual(clock.now());
+            expect(await stored(takeover.id)).toEqual(takeover);
+            expect(await activeTakeoversOn(apartmentsZone.id)).toBe(1);
         });
 
         it('refuses a takeover that waited for the end of the role of the chief administrator', async () => {

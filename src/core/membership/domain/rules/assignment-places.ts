@@ -40,7 +40,8 @@ export const assertRolePlace = (
     }
 };
 
-export const endsTakeoversOfNode = (
-    role: AssignmentRole,
-    node: AssignedNode,
-): boolean => role === ZONE_HOLDER_ROLE && node.kind === TAKEN_NODE_KIND;
+export const holdsZone = (role: AssignmentRole, node: AssignedNode): boolean =>
+    role === ZONE_HOLDER_ROLE && node.kind === TAKEN_NODE_KIND;
+
+export const returnsTakenZone = (holdersBefore: number): boolean =>
+    holdersBefore === 0;

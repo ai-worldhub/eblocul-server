@@ -2,8 +2,9 @@ import { NodeAssignmentEntity } from '../../../src/core/membership/domain/entiti
 import {
     type AppointedRole,
     type AssignedNode,
-    endsTakeoversOfNode,
+    holdsZone,
     type NodeKind,
+    returnsTakenZone,
 } from '../../../src/core/membership/domain/rules/assignment-places.ts';
 
 const NOW = new Date('2026-10-09T09:00:00.000Z');
@@ -211,13 +212,19 @@ describe('NodeAssignmentEntity', () => {
         });
     });
 
-    it('lets only an administrator assigned to a zone end the takeovers of the node', () => {
-        const ending = ROLES.flatMap((role) =>
-            KINDS.filter((kind) => endsTakeoversOfNode(role, nodeOf(kind))).map(
+    it('counts only an administrator assigned to a zone as the holder of the zone', () => {
+        const holding = ROLES.flatMap((role) =>
+            KINDS.filter((kind) => holdsZone(role, nodeOf(kind))).map(
                 (kind) => `${role} on ${kind}`,
             ),
         );
 
-        expect(ending).toEqual(['administrator on zone']);
+        expect(holding).toEqual(['administrator on zone']);
+    });
+
+    it('returns a taken zone only to its first administrator', () => {
+        expect(returnsTakenZone(0)).toBe(true);
+        expect(returnsTakenZone(1)).toBe(false);
+        expect(returnsTakenZone(2)).toBe(false);
     });
 });

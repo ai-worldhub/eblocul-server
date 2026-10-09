@@ -21,6 +21,11 @@ export abstract class NodeAssignmentRepository {
         tx: Tx,
         key: ActiveAssignmentKey,
     ): Promise<NodeAssignmentEntity | null>;
+    abstract findActiveOnNode(
+        tx: Tx,
+        nodeId: string,
+        role: AssignmentRole,
+    ): Promise<NodeAssignmentEntity[]>;
     abstract lockActiveTakeoversOfNode(
         tx: Tx,
         nodeId: string,
