@@ -6,6 +6,7 @@ import { ERROR_STATUSES } from '../../../src/app/error-statuses.ts';
 const SRC = fileURLToPath(new URL('../../../src', import.meta.url));
 const TABLE_FILE = '.error-statuses.ts';
 const GENERATED = 'generated';
+const FIRST_FAULT_STATUS = 500;
 
 const tableFiles = (): string[] =>
     readdirSync(SRC, { recursive: true, encoding: 'utf8' })
@@ -38,5 +39,13 @@ describe('ERROR_STATUSES', () => {
                 }
             }
         }
+    });
+
+    it('holds no fault of the code: a status from 500 is answered as INTERNAL_ERROR and logged', () => {
+        const faults = Object.entries(ERROR_STATUSES)
+            .filter(([, status]) => status >= FIRST_FAULT_STATUS)
+            .map(([code]) => code);
+
+        expect(faults).toEqual([]);
     });
 });

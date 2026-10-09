@@ -1,7 +1,9 @@
-export type ThrottleErrorCode =
-    | 'THROTTLE_RATE_LIMITED'
-    | 'THROTTLE_ATTEMPTS_LOCKED'
-    | 'THROTTLE_RULE_INVALID';
+export type ThrottleRefusalCode =
+    'THROTTLE_RATE_LIMITED' | 'THROTTLE_ATTEMPTS_LOCKED';
+
+export type ThrottleFaultCode = 'THROTTLE_RULE_INVALID';
+
+export type ThrottleErrorCode = ThrottleRefusalCode | ThrottleFaultCode;
 
 export class ThrottleError extends Error {
     constructor(
