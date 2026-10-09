@@ -5,7 +5,11 @@ import { Ids } from '../../../../shared/ids/ids.service.ts';
 import { EventLogger } from '../../../../shared/logging/event-logger.ts';
 import { normalizeEmail } from '../../domain/rules/email.ts';
 import { assertPasswordAcceptable } from '../../domain/rules/password-policy.ts';
-import { ACCOUNT_ID_SELECT } from '../../infrastructure/account.select.ts';
+import {
+    ACCOUNT_ID_SELECT,
+    ACCOUNT_NAME_SELECT,
+    type AccountName,
+} from '../../infrastructure/account.select.ts';
 import { PasswordHasher } from '../../ports/password-hasher.port.ts';
 import '../identity.log-events.ts';
 
@@ -33,6 +37,16 @@ export class AccountService {
             select: ACCOUNT_ID_SELECT,
         });
         return account?.id ?? null;
+    }
+
+    async findNames(accountIds: readonly string[]): Promise<AccountName[]> {
+        if (accountIds.length === 0) {
+            return [];
+        }
+        return this._db.account.findMany({
+            where: { id: { in: [...accountIds] } },
+            select: ACCOUNT_NAME_SELECT,
+        });
     }
 
     async createWithPassword(input: NewAccount): Promise<string> {
