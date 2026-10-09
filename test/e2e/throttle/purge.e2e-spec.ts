@@ -60,11 +60,11 @@ describe('Purge of expired throttle rows (e2e)', () => {
     };
 
     const purgeJobs = (): Promise<
-        { availableAt: Date; dedupKey: string | null }[]
+        { state: string; availableAt: Date; dedupKey: string | null }[]
     > =>
         testApp.db.job.findMany({
             where: { kind: PURGE_KIND },
-            orderBy: { availableAt: 'asc' },
+            orderBy: [{ availableAt: 'asc' }, { state: 'desc' }],
         });
 
     it('schedules one purge for the next five-minute slot, however many requests come', async () => {
@@ -79,6 +79,40 @@ describe('Purge of expired throttle rows (e2e)', () => {
                 payload: {},
             },
         ]);
+    });
+
+    it('schedules a purge for a slot whose earlier job is dead', async () => {
+        await testApp.db.job.create({
+            data: {
+                id: '00000000-0000-7000-8000-00000000d003',
+                kind: PURGE_KIND,
+                class: 'p4_short',
+                state: 'dead',
+                payload: {},
+                dedupKey: FIRST_SLOT.toISOString(),
+                attempts: 5,
+                createdAt: NOW,
+                availableAt: FIRST_SLOT,
+            },
+            select: { id: true },
+        });
+
+        await knock();
+        await knock();
+
+        expect(
+            (await purgeJobs()).map(({ state, availableAt, dedupKey }) => ({
+                state,
+                availableAt,
+                dedupKey,
+            })),
+        ).toEqual(
+            ['dead', 'waiting'].map((state) => ({
+                state,
+                availableAt: FIRST_SLOT,
+                dedupKey: FIRST_SLOT.toISOString(),
+            })),
+        );
     });
 
     it('keeps a bucket that is still filling and removes it once it is full again', async () => {

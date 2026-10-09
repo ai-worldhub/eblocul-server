@@ -19,6 +19,7 @@ enum JobState {
   @@schema("jobs")
 }
 
+// jobs_live_kind_dedup_key_key
 model Job {
   id             String    @id @db.Uuid
   kind           String
@@ -32,7 +33,6 @@ model Job {
   availableAt    DateTime  @map("available_at") @db.Timestamptz(3)
   leaseExpiresAt DateTime? @map("lease_expires_at") @db.Timestamptz(3)
 
-  @@unique([kind, dedupKey])
   @@index([state, availableAt])
   @@map("jobs")
   @@schema("jobs")
