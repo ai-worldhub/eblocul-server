@@ -629,6 +629,17 @@ describe('Structure tree (e2e)', () => {
             expect(await reading().findUnit(testApp.db, UNKNOWN_ID)).toBeNull();
         });
 
+        it('locks a node for the transaction of another module and gives its facts', async () => {
+            const { apartmentsZone } = await addQuarter();
+
+            const locked = await transactions().run(async (tx) => ({
+                zone: await reading().lockNode(tx, apartmentsZone.id),
+                unknown: await reading().lockNode(tx, UNKNOWN_ID),
+            }));
+
+            expect(locked).toEqual({ zone: apartmentsZone, unknown: null });
+        });
+
         it('finds the root of a complex by its name, and no node below the root', async () => {
             const { quarter, apartmentsZone } = await addQuarter();
 

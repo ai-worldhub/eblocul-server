@@ -24,6 +24,11 @@ export class TreeReadingService {
         return node?.view() ?? null;
     }
 
+    async lockNode(tx: Tx, nodeId: string): Promise<NodeSnapshot | null> {
+        const node = await this._nodes.lockById(tx, nodeId);
+        return node?.view() ?? null;
+    }
+
     async findUnit(tx: Tx, unitId: string): Promise<UnitSnapshot | null> {
         const unit = await this._units.findById(tx, unitId);
         return unit?.view() ?? null;
