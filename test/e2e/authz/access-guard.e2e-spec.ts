@@ -1,3 +1,4 @@
+import { SYSTEM_ACTOR } from '../../../src/core/journal/index.ts';
 import type { Response } from 'supertest';
 import { AccessService } from '../../../src/core/authz/index.ts';
 import type { SessionApplication } from '../../../src/core/identity/index.ts';
@@ -635,7 +636,7 @@ describe('Access guard (e2e)', () => {
                 first: (tx) =>
                     probe.app
                         .get(NodeAssignmentService)
-                        .end(tx, administrator.grantId),
+                        .end(tx, administrator.grantId, SYSTEM_ACTOR),
                 second: (tx) =>
                     probe.app.get(AccessService).confirm(tx, access, {
                         kind: 'node',
@@ -768,10 +769,14 @@ describe('Access guard (e2e)', () => {
                     await probe.app.get(AccessService).confirm(tx, access);
                     mine.open();
                     await other.opened;
-                    return probe.app.get(ZoneTakeoverService).takeZone(tx, {
-                        accountId: chiefId,
-                        nodeId: zoneId,
-                    });
+                    return probe.app.get(ZoneTakeoverService).takeZone(
+                        tx,
+                        {
+                            accountId: chiefId,
+                            nodeId: zoneId,
+                        },
+                        SYSTEM_ACTOR,
+                    );
                 });
 
             const taken = await Promise.allSettled([

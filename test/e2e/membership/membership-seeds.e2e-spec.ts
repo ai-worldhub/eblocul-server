@@ -82,6 +82,30 @@ describe('Seed membership.test_roles (e2e)', () => {
         expect(await testApp.db.unitMembership.count()).toBe(0);
     });
 
+    it('writes every seeded assignment to the action journal once, as made by the system', async () => {
+        await seed(2);
+
+        const entries = await testApp.db.journalEntry.findMany({
+            include: { subjectAccount: true, ownerNode: true },
+        });
+
+        expect(
+            entries
+                .map(
+                    ({ action, actorKind, subjectAccount, ownerNode }) =>
+                        `${action} ${actorKind} ${subjectAccount?.email ?? ''} ${ownerNode.name}`,
+                )
+                .sort(),
+        ).toEqual(
+            [
+                `membership.role_assigned system ${TEST_ADMIN.email} ${TEST_HOUSE.name}`,
+                `membership.role_assigned system ${TEST_CHAIRMAN.email} ${TEST_HOUSE.name}`,
+                `membership.role_assigned system ${TEST_CHIEF.email} ${TEST_QUARTER.name}`,
+                `membership.role_assigned system ${TEST_ZONE_ADMIN.email} ${TEST_QUARTER.apartmentsZone.name}`,
+            ].sort(),
+        );
+    });
+
     it('leaves the zone of private houses without an administrator: its requests go to the chief administrator', async () => {
         await seed(1);
         const reading = testApp.app.get(TreeReadingService);

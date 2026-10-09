@@ -1,5 +1,8 @@
 import type { DbService } from '../../src/shared/db/db.service.ts';
 
+const JOURNAL = 'journal.entries';
+const JOURNAL_GUARD = 'entries_append_only';
+
 export const cleanDatabase = async (db: DbService): Promise<void> => {
     if (process.env['NODE_ENV'] !== 'e2e') {
         throw new Error('Refusing to clean the database outside NODE_ENV=e2e');
@@ -22,7 +25,13 @@ export const cleanDatabase = async (db: DbService): Promise<void> => {
         .map(({ schemaname, tablename }) => `"${schemaname}"."${tablename}"`)
         .join(', ');
 
-    await db.$executeRawUnsafe(
-        `TRUNCATE TABLE ${list} RESTART IDENTITY CASCADE`,
-    );
+    await db.$executeRawUnsafe(`
+        DO $clean$
+        BEGIN
+            ALTER TABLE ${JOURNAL} DISABLE TRIGGER ${JOURNAL_GUARD};
+            TRUNCATE TABLE ${list} RESTART IDENTITY CASCADE;
+            ALTER TABLE ${JOURNAL} ENABLE TRIGGER ${JOURNAL_GUARD};
+        END
+        $clean$
+    `);
 };

@@ -72,6 +72,13 @@ describe('ACCESS_ACTIONS', () => {
             ]),
         );
 
-        expect(table).toEqual({});
+        expect(table).toEqual({
+            'journal.read_entries': {
+                kind: 'read',
+                administrator: ['perimeter'],
+                chairman: ['perimeter'],
+                chief_administrator: ['quarter'],
+            },
+        });
     });
 });

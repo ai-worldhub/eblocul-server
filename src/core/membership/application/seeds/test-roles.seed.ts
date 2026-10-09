@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Transactions } from '../../../../shared/db/transactions.service.ts';
 import { LabSeed } from '../../../../shared/seeding/lab-seed.ts';
 import { AccountService, TEST_ADMIN } from '../../../identity/index.ts';
+import { SYSTEM_ACTOR } from '../../../journal/index.ts';
 import {
     TEST_HOUSE,
     TEST_QUARTER,
@@ -66,26 +67,42 @@ export class TestRolesSeed extends LabSeed {
         const zoneAdminId = await this._account(TEST_ZONE_ADMIN);
         const chairmanId = await this._account(TEST_CHAIRMAN);
         await this._transactions.run(async (tx) => {
-            await this._assignments.assign(tx, {
-                accountId: places.adminId,
-                nodeId: places.houseId,
-                role: 'administrator',
-            });
-            await this._assignments.assign(tx, {
-                accountId: chairmanId,
-                nodeId: places.houseId,
-                role: 'chairman',
-            });
-            await this._assignments.assign(tx, {
-                accountId: chiefId,
-                nodeId: places.quarterId,
-                role: 'chief_administrator',
-            });
-            await this._assignments.assign(tx, {
-                accountId: zoneAdminId,
-                nodeId: places.zoneId,
-                role: 'administrator',
-            });
+            await this._assignments.assign(
+                tx,
+                {
+                    accountId: places.adminId,
+                    nodeId: places.houseId,
+                    role: 'administrator',
+                },
+                SYSTEM_ACTOR,
+            );
+            await this._assignments.assign(
+                tx,
+                {
+                    accountId: chairmanId,
+                    nodeId: places.houseId,
+                    role: 'chairman',
+                },
+                SYSTEM_ACTOR,
+            );
+            await this._assignments.assign(
+                tx,
+                {
+                    accountId: chiefId,
+                    nodeId: places.quarterId,
+                    role: 'chief_administrator',
+                },
+                SYSTEM_ACTOR,
+            );
+            await this._assignments.assign(
+                tx,
+                {
+                    accountId: zoneAdminId,
+                    nodeId: places.zoneId,
+                    role: 'administrator',
+                },
+                SYSTEM_ACTOR,
+            );
         });
     }
 

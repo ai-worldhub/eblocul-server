@@ -3,6 +3,7 @@ import { Clock } from '../../../../shared/clock/clock.service.ts';
 import type { Tx } from '../../../../shared/db/tx.ts';
 import { Ids } from '../../../../shared/ids/ids.service.ts';
 import { EventLogger } from '../../../../shared/logging/event-logger.ts';
+import { type JournalActor, JournalService } from '../../../journal/index.ts';
 import { TreeReadingService } from '../../../structure/index.ts';
 import {
     chiefRequired,
@@ -11,6 +12,7 @@ import {
 import { MembershipError } from '../../domain/membership.errors.ts';
 import type { AssignmentRole } from '../../domain/rules/assignment-places.ts';
 import { NodeAssignmentRepository } from '../../ports/node-assignment.repository.ts';
+import { ZONE_TAKEN } from '../membership.journal-actions.ts';
 import '../membership.log-events.ts';
 import { lockedNodeOrRefuse } from '../node-lookup.ts';
 import { TakeoverReleaseService } from './takeover-release.service.ts';
@@ -27,6 +29,7 @@ export class ZoneTakeoverService {
     constructor(
         private readonly _assignments: NodeAssignmentRepository,
         private readonly _release: TakeoverReleaseService,
+        private readonly _journal: JournalService,
         private readonly _tree: TreeReadingService,
         private readonly _clock: Clock,
         private readonly _ids: Ids,
@@ -36,6 +39,7 @@ export class ZoneTakeoverService {
     async takeZone(
         tx: Tx,
         input: ZoneTakeover,
+        actor: JournalActor,
     ): Promise<NodeAssignmentSnapshot> {
         const zone = await lockedNodeOrRefuse(this._tree, tx, input.nodeId);
         const chief = await this._assignments.holdActive(tx, {
@@ -53,7 +57,7 @@ export class ZoneTakeoverService {
         });
         const stored = await this._assignments.addOrFindActive(tx, takeover);
         if (stored === takeover) {
-            this._zoneTaken(stored.view());
+            await this._zoneTaken(tx, stored.view(), actor);
         }
         return stored.view();
     }
@@ -61,6 +65,7 @@ export class ZoneTakeoverService {
     async returnZone(
         tx: Tx,
         takeoverId: string,
+        actor: JournalActor,
     ): Promise<NodeAssignmentSnapshot> {
         const takeover = await this._assignments.lockById(tx, takeoverId);
         if (takeover === null || !takeover.isTakeover()) {
@@ -70,11 +75,21 @@ export class ZoneTakeoverService {
                 { assignmentId: takeoverId },
             );
         }
-        await this._release.end(tx, takeover, 'returned_by_chief');
+        await this._release.end(tx, takeover, 'returned_by_chief', actor);
         return takeover.view();
     }
 
-    private _zoneTaken(takeover: NodeAssignmentSnapshot): void {
+    private async _zoneTaken(
+        tx: Tx,
+        takeover: NodeAssignmentSnapshot,
+        actor: JournalActor,
+    ): Promise<void> {
+        await this._journal.record(tx, ZONE_TAKEN, {
+            actor,
+            nodeId: takeover.nodeId,
+            subjectAccountId: takeover.accountId,
+            details: { assignmentId: takeover.id },
+        });
         this._events.info('membership.zone_taken', {
             assignmentId: takeover.id,
             accountId: takeover.accountId,

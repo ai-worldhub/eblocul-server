@@ -1,3 +1,7 @@
+import {
+    type JournalActor,
+    SYSTEM_ACTOR,
+} from '../../src/core/journal/index.ts';
 import { MembershipError } from '../../src/core/membership/domain/membership.errors.ts';
 import {
     type AppointedRole,
@@ -33,13 +37,21 @@ export type MembershipSetup = {
         accountId: string,
         nodeId: string,
         role: AppointedRole,
+        actor?: JournalActor,
     ) => Promise<NodeAssignmentSnapshot>;
-    endAssignment: (assignmentId: string) => Promise<NodeAssignmentSnapshot>;
+    endAssignment: (
+        assignmentId: string,
+        actor?: JournalActor,
+    ) => Promise<NodeAssignmentSnapshot>;
     takeZone: (
         accountId: string,
         nodeId: string,
+        actor?: JournalActor,
     ) => Promise<NodeAssignmentSnapshot>;
-    returnZone: (takeoverId: string) => Promise<NodeAssignmentSnapshot>;
+    returnZone: (
+        takeoverId: string,
+        actor?: JournalActor,
+    ) => Promise<NodeAssignmentSnapshot>;
     bind: (
         accountId: string,
         unitId: string,
@@ -65,18 +77,22 @@ export const membershipSetupOf = (
             await testApp.db.account.createMany({ data: [row] });
             return row.id;
         },
-        assign: (accountId, nodeId, role) =>
+        assign: (accountId, nodeId, role, actor = SYSTEM_ACTOR) =>
             transactions().run((tx) =>
-                assignments().assign(tx, { accountId, nodeId, role }),
+                assignments().assign(tx, { accountId, nodeId, role }, actor),
             ),
-        endAssignment: (assignmentId) =>
-            transactions().run((tx) => assignments().end(tx, assignmentId)),
-        takeZone: (accountId, nodeId) =>
+        endAssignment: (assignmentId, actor = SYSTEM_ACTOR) =>
             transactions().run((tx) =>
-                takeovers().takeZone(tx, { accountId, nodeId }),
+                assignments().end(tx, assignmentId, actor),
             ),
-        returnZone: (takeoverId) =>
-            transactions().run((tx) => takeovers().returnZone(tx, takeoverId)),
+        takeZone: (accountId, nodeId, actor = SYSTEM_ACTOR) =>
+            transactions().run((tx) =>
+                takeovers().takeZone(tx, { accountId, nodeId }, actor),
+            ),
+        returnZone: (takeoverId, actor = SYSTEM_ACTOR) =>
+            transactions().run((tx) =>
+                takeovers().returnZone(tx, takeoverId, actor),
+            ),
         bind: (accountId, unitId, role) =>
             transactions().run((tx) =>
                 memberships().bind(tx, { accountId, unitId, role }),

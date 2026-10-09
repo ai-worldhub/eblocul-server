@@ -27,13 +27,15 @@ model Node {
   address   String?
   createdAt DateTime @map("created_at") @db.Timestamptz(3)
 
-  complex      Node             @relation("NodeComplex", fields: [complexId], references: [id], onDelete: Restrict)
-  complexNodes Node[]           @relation("NodeComplex")
-  ancestors    NodeAncestor[]   @relation("NodeAncestorNode")
-  descendants  NodeAncestor[]   @relation("NodeAncestorAncestor")
-  units        Unit[]           @relation("UnitNode")
-  complexUnits Unit[]           @relation("UnitComplex")
-  assignments  NodeAssignment[]
+  complex             Node             @relation("NodeComplex", fields: [complexId], references: [id], onDelete: Restrict)
+  complexNodes        Node[]           @relation("NodeComplex")
+  ancestors           NodeAncestor[]   @relation("NodeAncestorNode")
+  descendants         NodeAncestor[]   @relation("NodeAncestorAncestor")
+  units               Unit[]           @relation("UnitNode")
+  complexUnits        Unit[]           @relation("UnitComplex")
+  assignments         NodeAssignment[]
+  journalEntries      JournalEntry[]   @relation("JournalEntryComplex")
+  ownedJournalEntries JournalEntry[]   @relation("JournalEntryOwnerNode")
 
   @@index([complexId])
   @@map("nodes")
@@ -63,12 +65,13 @@ model Unit {
   floor     Int?
   createdAt DateTime @map("created_at") @db.Timestamptz(3)
 
-  complex     Node             @relation("UnitComplex", fields: [complexId], references: [id], onDelete: Restrict)
-  node        Node             @relation("UnitNode", fields: [nodeId], references: [id], onDelete: Restrict)
-  memberships UnitMembership[]
+  complex        Node             @relation("UnitComplex", fields: [complexId], references: [id], onDelete: Restrict)
+  node           Node             @relation("UnitNode", fields: [nodeId], references: [id], onDelete: Restrict)
+  memberships    UnitMembership[]
+  journalEntries JournalEntry[]
 
-  @@index([complexId])
   @@unique([nodeId, number])
+  @@index([complexId])
   @@map("units")
   @@schema("structure")
 }
