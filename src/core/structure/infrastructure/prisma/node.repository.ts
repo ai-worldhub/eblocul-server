@@ -19,7 +19,7 @@ true satisfies [NodeState] extends [NodeSnapshot]
 
 type Found = { id: string; parent_id: string | null };
 
-const ROW_LOCK = Prisma.sql`FOR UPDATE OF n`;
+const ROW_LOCK = Prisma.sql`FOR NO KEY UPDATE OF n`;
 
 @Injectable()
 export class PrismaNodeRepository implements NodeRepository {

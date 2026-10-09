@@ -516,6 +516,77 @@ describe('Structure tree (e2e)', () => {
         });
     });
 
+    describe('simultaneous work', () => {
+        const gate = (): { open: () => void; opened: Promise<void> } => {
+            let open: () => void = () => undefined;
+            const opened = new Promise<void>((resolve) => {
+                open = resolve;
+            });
+            return { open, opened };
+        };
+
+        it('lets two transactions add a unit each and then a node under the same root', async () => {
+            const { house, firstEntrance, secondEntrance } = await addHouse();
+            const first = gate();
+            const second = gate();
+
+            const work = (
+                entranceId: string,
+                number: string,
+                mine: { open: () => void },
+                other: { opened: Promise<void> },
+            ): Promise<NodeSnapshot> =>
+                transactions().run(async (tx) => {
+                    await building().createUnit(tx, {
+                        id: nextId(),
+                        nodeId: entranceId,
+                        type: 'apartment',
+                        number,
+                        floor: null,
+                    });
+                    mine.open();
+                    await other.opened;
+                    return building().createChild(tx, {
+                        id: nextId(),
+                        parentId: house.id,
+                        kind: 'entrance',
+                        name: `Entrance of ${number}`,
+                        address: null,
+                    });
+                });
+
+            const results = await Promise.allSettled([
+                work(firstEntrance.id, '100', first, second),
+                work(secondEntrance.id, '200', second, first),
+            ]);
+
+            expect(results.map((result) => result.status)).toEqual([
+                'fulfilled',
+                'fulfilled',
+            ]);
+            expect(await testApp.db.node.count()).toBe(5);
+            expect(await testApp.db.unit.count()).toBe(4);
+        });
+
+        it('does not hold back a unit elsewhere in the complex while a new node under the root is not committed', async () => {
+            const { house, firstEntrance } = await addHouse();
+
+            const added = await transactions().run(async (tx) => {
+                await building().createChild(tx, {
+                    id: nextId(),
+                    parentId: house.id,
+                    kind: 'entrance',
+                    name: 'Entrance 3',
+                    address: null,
+                });
+                return addUnit(firstEntrance.id, 'apartment', '8');
+            });
+
+            expect(added.number).toBe('8');
+            expect(await testApp.db.node.count()).toBe(4);
+        });
+    });
+
     describe('refusals', () => {
         it('refuses a child that breaks the order of levels and stores nothing', async () => {
             const { house } = await addHouse();
