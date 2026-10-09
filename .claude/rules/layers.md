@@ -110,7 +110,7 @@ const code = AccessCodeEntity.issue({
 ## Группировка внутри слоя
 
 - Файлы слоя лежат в папках по виду. Папка вида создаётся с первым файлом этого вида.
-- `domain/` — `entities/`, `rules/`.
+- `domain/` — `entities/`, `rules/`. Составной тип из нескольких entity — цепочка, поддерево — лежит в `entities/` отдельным файлом; в `ports/` его нет.
 - `application/` — `services/`, `seeds/`, `handlers/`.
 - `presentation/` — `dto/`, `mappers/`, `guard/`, `decorators/`.
 - `infrastructure/` — по технологиям: `prisma/`, `node/`, `sms/`.
