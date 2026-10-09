@@ -6,6 +6,7 @@ import {
     type NodeAssignmentSnapshot,
 } from '../../domain/entities/node-assignment.entity.ts';
 import { MembershipError } from '../../domain/membership.errors.ts';
+import type { AssignmentRole } from '../../domain/rules/assignment-places.ts';
 import type {
     ActiveAssignmentKey,
     NodeAssignmentRepository,
@@ -90,6 +91,19 @@ export class PrismaNodeAssignmentRepository implements NodeAssignmentRepository 
             `,
         );
         return assignment;
+    }
+
+    async findActiveOnNode(
+        tx: Tx,
+        nodeId: string,
+        role: AssignmentRole,
+    ): Promise<NodeAssignmentEntity[]> {
+        const rows = await tx.nodeAssignment.findMany({
+            where: { nodeId, role, endedAt: null },
+            select: NODE_ASSIGNMENT_STATE_SELECT,
+            orderBy: [{ startedAt: 'asc' }, { id: 'asc' }],
+        });
+        return rows.map((row) => NodeAssignmentEntity.restore(row));
     }
 
     lockActiveTakeoversOfNode(

@@ -338,7 +338,7 @@ describe('Zone takeover by the chief administrator (e2e)', () => {
             ]);
         });
 
-        it('loses the takeover when one more administrator of the zone is assigned', async () => {
+        it('keeps the takeover when one more administrator of the zone is assigned', async () => {
             const { chiefId, apartmentsZone } = await quarterWithChief();
             const firstAdminId = await setup.addAccount();
             const secondAdminId = await setup.addAccount();
@@ -348,6 +348,27 @@ describe('Zone takeover by the chief administrator (e2e)', () => {
                 'administrator',
             );
             const takeover = await setup.takeZone(chiefId, apartmentsZone.id);
+
+            await setup.assign(
+                secondAdminId,
+                apartmentsZone.id,
+                'administrator',
+            );
+
+            expect(await stored(takeover.id)).toEqual(takeover);
+        });
+
+        it('loses the takeover when the zone was left without administrators and gets one again', async () => {
+            const { chiefId, apartmentsZone } = await quarterWithChief();
+            const firstAdminId = await setup.addAccount();
+            const secondAdminId = await setup.addAccount();
+            const first = await setup.assign(
+                firstAdminId,
+                apartmentsZone.id,
+                'administrator',
+            );
+            const takeover = await setup.takeZone(chiefId, apartmentsZone.id);
+            await setup.endAssignment(first.id);
 
             await setup.assign(
                 secondAdminId,
