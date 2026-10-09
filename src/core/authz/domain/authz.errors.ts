@@ -1,10 +1,13 @@
-export type AuthzErrorCode =
+export type AuthzRefusalCode =
     | 'AUTHZ_GRANT_REQUIRED'
     | 'AUTHZ_GRANT_NOT_ACTIVE'
     | 'AUTHZ_ACTION_FORBIDDEN'
-    | 'AUTHZ_TARGET_NOT_FOUND'
-    | 'AUTHZ_ACTION_INVALID'
-    | 'AUTHZ_ACCESS_MARK_INVALID';
+    | 'AUTHZ_TARGET_NOT_FOUND';
+
+export type AuthzFaultCode =
+    'AUTHZ_ACTION_INVALID' | 'AUTHZ_ACCESS_MARK_INVALID';
+
+export type AuthzErrorCode = AuthzRefusalCode | AuthzFaultCode;
 
 export class AuthzError extends Error {
     constructor(
