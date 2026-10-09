@@ -32,5 +32,6 @@ import { TrustedOrigins } from './presentation/guard/trusted-origins.ts';
         { provide: PasswordHasher, useClass: ArgonPasswordHasher },
         { provide: SessionTokenSource, useClass: CryptoSessionTokenSource },
     ],
+    exports: [AccountService],
 })
 export class IdentityModule {}

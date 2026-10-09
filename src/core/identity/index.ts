@@ -1,5 +1,9 @@
 export { IdentityModule } from './identity.module.ts';
-export { TestAdminSeed } from './application/seeds/test-admin.seed.ts';
+export {
+    TEST_ADMIN,
+    TestAdminSeed,
+} from './application/seeds/test-admin.seed.ts';
+export { AccountService } from './application/services/account.service.ts';
 export type {
     SessionApplication,
     SessionContext,
