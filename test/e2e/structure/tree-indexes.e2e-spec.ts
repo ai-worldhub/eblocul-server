@@ -14,10 +14,10 @@ import { Ids } from '../../../src/shared/ids/ids.service.ts';
 import { unitRow } from '../../factories/structure.factory.ts';
 import { useTestApp } from '../../utils/e2e-setup.ts';
 import {
+    planOf,
+    type QueryPlan,
     rowsReadFrom,
     sequentiallyScanned,
-    type TableScan,
-    tableScansOf,
 } from '../../utils/query-plan.ts';
 
 const ZONES = 4;
@@ -34,6 +34,10 @@ const CHAIN_LENGTH = 4;
 const INSERT_BATCH = 2000;
 const BUILD_TIMEOUT_MS = 60_000;
 const ROUNDING_SHARE = 0.05;
+const SUBTREE_INDEXES = [
+    'node_ancestors_ancestor_id_node_id_idx',
+    'units_node_id_number_key',
+];
 
 type Quarter = {
     zoneId: string;
@@ -129,10 +133,10 @@ describe('Structure tree on ten thousand units (e2e)', () => {
         };
     };
 
-    const withoutSequentialScans = (query: Prisma.Sql): Promise<TableScan[]> =>
+    const withoutSequentialScans = (query: Prisma.Sql): Promise<QueryPlan> =>
         transactions().run(async (tx) => {
             await tx.$executeRaw`SET LOCAL enable_seqscan = off`;
-            return tableScansOf(tx, query);
+            return planOf(tx, query);
         });
 
     const expectAbout = (actual: number, expected: number): void => {
@@ -163,7 +167,7 @@ describe('Structure tree on ten thousand units (e2e)', () => {
     });
 
     it('reads the chain of a unit through indexes and touches only the chain', async () => {
-        const scans = await tableScansOf(
+        const { scans } = await planOf(
             testApp.db,
             chainOfUnitSql(built().apartmentId),
         );
@@ -174,14 +178,15 @@ describe('Structure tree on ten thousand units (e2e)', () => {
         expect(rowsReadFrom(scans, 'nodes')).toBe(CHAIN_LENGTH);
     });
 
-    it('reads the subtree of an entrance without scanning all units or all ancestor rows', async () => {
-        const scans = await tableScansOf(
+    it('reads the subtree of an entrance through the ancestor and the unit indexes', async () => {
+        const { scans, indexes } = await planOf(
             testApp.db,
             subtreeSql(built().entranceId),
         );
 
         expect(sequentiallyScanned(scans)).not.toContain('units');
         expect(sequentiallyScanned(scans)).not.toContain('node_ancestors');
+        expect(indexes).toEqual(expect.arrayContaining(SUBTREE_INDEXES));
         expect(rowsReadFrom(scans, 'units')).toBe(APARTMENTS_PER_ENTRANCE);
     });
 
@@ -191,9 +196,16 @@ describe('Structure tree on ten thousand units (e2e)', () => {
         const ofBuilding = await withoutSequentialScans(subtreeSql(buildingId));
         const ofZone = await withoutSequentialScans(subtreeSql(zoneId));
 
-        expect(sequentiallyScanned(ofBuilding)).toEqual([]);
-        expect(sequentiallyScanned(ofZone)).toEqual([]);
-        expectAbout(rowsReadFrom(ofBuilding, 'units'), APARTMENTS_PER_BUILDING);
-        expectAbout(rowsReadFrom(ofZone, 'units'), APARTMENTS_PER_ZONE);
+        for (const plan of [ofBuilding, ofZone]) {
+            expect(sequentiallyScanned(plan.scans)).toEqual([]);
+            expect(plan.indexes).toEqual(
+                expect.arrayContaining(SUBTREE_INDEXES),
+            );
+        }
+        expectAbout(
+            rowsReadFrom(ofBuilding.scans, 'units'),
+            APARTMENTS_PER_BUILDING,
+        );
+        expectAbout(rowsReadFrom(ofZone.scans, 'units'), APARTMENTS_PER_ZONE);
     });
 });

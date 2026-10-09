@@ -8,6 +8,7 @@ import {
     type UnitSnapshot,
     type UnitType,
 } from '../../../src/core/structure/index.ts';
+import { StructureError } from '../../../src/core/structure/domain/structure.errors.ts';
 import { Clock } from '../../../src/shared/clock/clock.service.ts';
 import { Transactions } from '../../../src/shared/db/transactions.service.ts';
 import { Ids } from '../../../src/shared/ids/ids.service.ts';
@@ -34,6 +35,19 @@ type Quarter = {
     housesZone: NodeSnapshot;
     line: NodeSnapshot;
     privateHouse: UnitSnapshot;
+};
+
+const refusalOf = async (
+    work: Promise<unknown>,
+): Promise<{ code: unknown; details: unknown }> => {
+    const refusal: unknown = await work.then(
+        () => null,
+        (error: unknown) => error,
+    );
+    if (!(refusal instanceof StructureError)) {
+        throw new Error('The work was not refused by the structure module');
+    }
+    return { code: refusal.code, details: refusal.details };
 };
 
 const idsOf = (items: { id: string }[]): string[] =>
@@ -414,49 +428,91 @@ describe('Structure tree (e2e)', () => {
             expect(await testApp.db.unit.count()).toBe(3);
         });
 
-        it('refuses the id of a node that stands elsewhere and does not reveal it', async () => {
+        it('refuses the id of a node that stands elsewhere and reveals nothing but that id', async () => {
             const { house, firstEntrance } = await addHouse();
             const other = await addRoot('zone', 'Test Zone');
             const before = await counts();
 
-            await expect(
-                addChild(other.id, 'building', 'Building 1', {
-                    id: firstEntrance.id,
-                }),
-            ).rejects.toMatchObject({
+            expect(
+                await refusalOf(
+                    addChild(other.id, 'building', 'Building 1', {
+                        id: firstEntrance.id,
+                    }),
+                ),
+            ).toEqual({
                 code: 'STRUCTURE_ID_TAKEN',
                 details: { id: firstEntrance.id },
             });
-            await expect(
-                addChild(house.id, 'entrance', 'Entrance 3', { id: house.id }),
-            ).rejects.toMatchObject({ code: 'STRUCTURE_ID_TAKEN' });
-            await expect(
-                transactions().run((tx) =>
-                    building().createRoot(tx, {
-                        id: firstEntrance.id,
-                        kind: 'building',
-                        name: 'Test House',
-                        address: null,
+            expect(
+                await refusalOf(
+                    addChild(house.id, 'entrance', 'Entrance 3', {
+                        id: house.id,
                     }),
                 ),
-            ).rejects.toMatchObject({ code: 'STRUCTURE_ID_TAKEN' });
+            ).toEqual({
+                code: 'STRUCTURE_ID_TAKEN',
+                details: { id: house.id },
+            });
+            expect(
+                await refusalOf(
+                    transactions().run((tx) =>
+                        building().createRoot(tx, {
+                            id: firstEntrance.id,
+                            kind: 'building',
+                            name: 'Test House',
+                            address: null,
+                        }),
+                    ),
+                ),
+            ).toEqual({
+                code: 'STRUCTURE_ID_TAKEN',
+                details: { id: firstEntrance.id },
+            });
 
             expect(await counts()).toEqual(before);
         });
 
-        it('refuses the id of a unit that belongs to another node', async () => {
-            const { secondEntrance, apartment7 } = await addHouse();
+        it('refuses the id of a node of another kind under the same parent', async () => {
+            const zone = await addRoot('zone', 'Test Zone');
+            const line = await addChild(zone.id, 'line', 'Line A');
 
-            await expect(
-                addUnit(secondEntrance.id, 'apartment', '50', {
-                    id: apartment7.id,
-                }),
-            ).rejects.toMatchObject({
+            expect(
+                await refusalOf(
+                    addChild(zone.id, 'building', 'Building 1', {
+                        id: line.id,
+                    }),
+                ),
+            ).toEqual({
+                code: 'STRUCTURE_ID_TAKEN',
+                details: { id: line.id },
+            });
+        });
+
+        it('refuses the id of a unit that belongs to another node or has another type', async () => {
+            const { secondEntrance, apartment7 } = await addHouse();
+            const { line, privateHouse } = await addQuarter();
+            const before = await counts();
+
+            expect(
+                await refusalOf(
+                    addUnit(secondEntrance.id, 'apartment', '50', {
+                        id: apartment7.id,
+                    }),
+                ),
+            ).toEqual({
                 code: 'STRUCTURE_ID_TAKEN',
                 details: { id: apartment7.id },
             });
+            expect(
+                await refusalOf(
+                    addUnit(line.id, 'duplex', '12A', { id: privateHouse.id }),
+                ),
+            ).toEqual({
+                code: 'STRUCTURE_ID_TAKEN',
+                details: { id: privateHouse.id },
+            });
 
-            expect(await testApp.db.unit.count()).toBe(2);
+            expect(await counts()).toEqual(before);
         });
     });
 

@@ -5,6 +5,7 @@ import type { Tx } from '../../src/shared/db/tx.ts';
 type PlanNode = {
     'Node Type': string;
     'Relation Name'?: string;
+    'Index Name'?: string;
     'Actual Rows'?: number;
     'Actual Loops'?: number;
     'Rows Removed by Filter'?: number;
@@ -18,6 +19,8 @@ export type TableScan = {
     method: string;
     rowsRead: number;
 };
+
+export type QueryPlan = { scans: TableScan[]; indexes: string[] };
 
 const SEQUENTIAL_SCAN = 'Seq Scan';
 
@@ -40,10 +43,15 @@ const scansIn = (node: PlanNode): TableScan[] => {
     return [...own, ...(node.Plans ?? []).flatMap(scansIn)];
 };
 
-export const tableScansOf = async (
+const indexesIn = (node: PlanNode): string[] => [
+    ...(node['Index Name'] === undefined ? [] : [node['Index Name']]),
+    ...(node.Plans ?? []).flatMap(indexesIn),
+];
+
+export const planOf = async (
     db: DbService | Tx,
     query: Prisma.Sql,
-): Promise<TableScan[]> => {
+): Promise<QueryPlan> => {
     const explained = await db.$queryRaw<Explained[]>(
         Prisma.sql`EXPLAIN (ANALYZE, FORMAT JSON) ${query}`,
     );
@@ -51,7 +59,7 @@ export const tableScansOf = async (
     if (plan === undefined) {
         throw new Error('EXPLAIN returned no plan');
     }
-    return scansIn(plan);
+    return { scans: scansIn(plan), indexes: [...new Set(indexesIn(plan))] };
 };
 
 export const sequentiallyScanned = (scans: TableScan[]): string[] => [
