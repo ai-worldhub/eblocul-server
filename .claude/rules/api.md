@@ -41,8 +41,10 @@ paths:
 - Цель в пути называется в пометке: `{ node: 'nodeId' }` или `{ unit: 'unitId' }`.
 - Область видимости контроллер берёт через `@CurrentAccess()` и передаёт в сервис. Каждый метод запроса к данным дома
   принимает `AccessScope` и ставит его условием запроса: `scopeCondition` для сырого SQL, `scopeWhere` для Prisma.
-- Изменение первой строкой транзакции вызывает `AccessService.confirm(tx, access)`: он перепроверяет основание и цель
-  и держит их до конца транзакции. Цель, которой нет в пути, передаётся третьим аргументом.
+- Изменение первой строкой транзакции вызывает `AccessService.confirm(tx, access)`: он перепроверяет основание и цель,
+  держит их до конца транзакции и возвращает область видимости, вычисленную заново.
+  Запросы этой транзакции ставят её, а не `access.scope`: область от guard к этому моменту могла устареть.
+  Цель, которой нет в пути, передаётся третьим аргументом.
 - Собрать `AccessScope` вне `authz`, сравнить роль или узел в модуле — ошибка.
 
 ```ts
@@ -60,6 +62,12 @@ export const TICKET_CHANGE_STATUS = defineAction({
 close(@CurrentAccess() access: AccessContext, @Param() params: CloseTicketParams): Promise<TicketResponse> {
     return this._tickets.close(access, params.ticketId);
 }
+
+return this._transactions.run(async (tx) => {
+    const scope = await this._access.confirm(tx, access);
+    const ticket = await this._tickets.lockById(tx, scope, ticketId);
+    …
+});
 ```
 
 Ответы guard доступа одинаковы у всех эндпоинтов с `@Access`; пометка сама описывает их в Swagger:
@@ -178,7 +186,8 @@ read(@Param('houseId', ParseUUIDPipe) houseId: string): Promise<House.Card> {
 - 429 в описании эндпоинта с лимитом; вход без пометки `auth`; `@NoRateLimit()` на эндпоинте, который мониторинг не опрашивает.
 - `@Public()` на эндпоинте, который должен быть закрыт; открытый эндпоинт для браузера без `@RequireTrustedOrigin()`.
 - `@SessionOnly()` на эндпоинте с данными дома; охват действия шире, чем положено роли.
-- Метод запроса к данным дома без `AccessScope`; изменение без `AccessService.confirm`.
+- Метод запроса к данным дома без `AccessScope`; изменение без `AccessService.confirm`;
+  запрос в транзакции изменения с областью от guard, а не от `confirm`.
 - Что у метода указан тип возврата: без него `tsc` не сравнивает ответ с DTO.
 - Что описаны ошибки, кроме 400: тест видит только описанное и не знает, что метод бросает 404 или 409.
 - Имя в `@ApiSchema`: при совпадении имён остаётся одна схема, и тест этого не замечает.
