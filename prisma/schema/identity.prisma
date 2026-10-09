@@ -25,6 +25,7 @@ model Account {
   phoneVerifiedAt DateTime? @map("phone_verified_at") @db.Timestamptz(3)
 
   password               AccountPassword?
+  consents               Consent[]
   sessions               Session[]
   unitMemberships        UnitMembership[]
   nodeAssignments        NodeAssignment[]
@@ -61,5 +62,32 @@ model Session {
 
   @@index([accountId])
   @@map("sessions")
+  @@schema("identity")
+}
+
+model Consent {
+  id         String   @id @db.Uuid
+  accountId  String   @map("account_id") @db.Uuid
+  version    String
+  acceptedAt DateTime @map("accepted_at") @db.Timestamptz(3)
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@unique([accountId, version])
+  @@map("consents")
+  @@schema("identity")
+}
+
+model PhoneCode {
+  id               String    @id @db.Uuid
+  phone            String    @unique
+  codeHash         String    @map("code_hash")
+  pendingTokenHash String?   @unique @map("pending_token_hash")
+  createdAt        DateTime  @map("created_at") @db.Timestamptz(3)
+  expiresAt        DateTime  @map("expires_at") @db.Timestamptz(3)
+  confirmedAt      DateTime? @map("confirmed_at") @db.Timestamptz(3)
+
+  @@index([expiresAt])
+  @@map("phone_codes")
   @@schema("identity")
 }
