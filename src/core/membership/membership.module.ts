@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { IdentityModule } from '../identity/index.ts';
-import { JournalModule } from '../journal/index.ts';
 import { StructureModule } from '../structure/index.ts';
 import { TestRolesSeed } from './application/seeds/test-roles.seed.ts';
 import { NodeAssignmentService } from './application/services/node-assignment.service.ts';
@@ -16,7 +15,7 @@ import { RecipientQueries } from './ports/recipient-queries.port.ts';
 import { UnitMembershipRepository } from './ports/unit-membership.repository.ts';
 
 @Module({
-    imports: [IdentityModule, StructureModule, JournalModule],
+    imports: [IdentityModule, StructureModule],
     providers: [
         UnitMembershipService,
         NodeAssignmentService,

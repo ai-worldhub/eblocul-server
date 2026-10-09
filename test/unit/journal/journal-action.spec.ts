@@ -1,5 +1,6 @@
 import {
     assertDistinctActions,
+    assertRegistered,
     defineJournalAction,
     type JournalAction,
 } from '../../../src/core/journal/domain/rules/journal-action.ts';
@@ -102,5 +103,27 @@ describe('assertDistinctActions', () => {
         expect(
             codeOf(() => assertDistinctActions([closed, opened, twin])),
         ).toBe('JOURNAL_ACTION_REPEATED');
+    });
+});
+
+describe('assertRegistered', () => {
+    const closed = defineJournalAction({ name: 'tickets.closed', details: {} });
+
+    it('accepts the very action that is in the list', () => {
+        expect(codeOf(() => assertRegistered([closed], closed))).toBeNull();
+    });
+
+    it('refuses an action that is not in the list, even under a listed name', () => {
+        const twin = defineJournalAction({
+            name: 'tickets.closed',
+            details: { comment: ['any'] },
+        });
+
+        expect(codeOf(() => assertRegistered([closed], twin))).toBe(
+            'JOURNAL_ACTION_NOT_REGISTERED',
+        );
+        expect(codeOf(() => assertRegistered([], closed))).toBe(
+            'JOURNAL_ACTION_NOT_REGISTERED',
+        );
     });
 });

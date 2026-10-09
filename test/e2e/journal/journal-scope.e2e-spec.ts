@@ -9,12 +9,12 @@ import {
 import type { SessionApplication } from '../../../src/core/identity/index.ts';
 import { JOURNAL_READ_ENTRIES } from '../../../src/core/journal/index.ts';
 import { Prisma } from '../../../src/generated/prisma/client.ts';
-import { Clock } from '../../../src/shared/clock/clock.service.ts';
 import { ClockDouble } from '../../utils/clock.double.ts';
 import { useTestApp } from '../../utils/e2e-setup.ts';
 import {
     buildJournalWorld,
     type JournalWorld,
+    withJournalWorld,
 } from '../../utils/journal-world.ts';
 import { membershipSetupOf } from '../../utils/membership-setup.ts';
 
@@ -52,9 +52,7 @@ type Found = { id: string };
 
 describe('Access scope on the journal table (e2e)', () => {
     const clock = new ClockDouble(START);
-    const testApp = useTestApp((builder) =>
-        builder.overrideProvider(Clock).useValue(clock),
-    );
+    const testApp = useTestApp(withJournalWorld(clock));
 
     let world: JournalWorld;
 

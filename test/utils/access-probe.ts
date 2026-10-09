@@ -8,6 +8,7 @@ import {
     Patch,
     Post,
 } from '@nestjs/common';
+import { JOURNAL_ACTIONS } from '../../src/app/journal-actions.ts';
 import {
     Access,
     type AccessContext,
@@ -19,6 +20,7 @@ import {
     scopeCondition,
 } from '../../src/core/authz/index.ts';
 import { IdentityModule } from '../../src/core/identity/index.ts';
+import { JournalModule } from '../../src/core/journal/index.ts';
 import { MembershipModule } from '../../src/core/membership/index.ts';
 import { StructureModule } from '../../src/core/structure/index.ts';
 import { Prisma } from '../../src/generated/prisma/client.ts';
@@ -341,6 +343,7 @@ const ACCESS_PROBE_IMPORTS = [
     DbModule,
     ClockModule,
     IdsModule,
+    JournalModule.register(JOURNAL_ACTIONS),
     IdentityModule,
     StructureModule,
     MembershipModule,

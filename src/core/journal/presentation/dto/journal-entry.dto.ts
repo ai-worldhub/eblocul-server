@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
     IsISO8601,
     IsOptional,
@@ -23,7 +24,11 @@ import {
 
 const MOMENT =
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?(Z|[+-]\d{2}:\d{2})$/;
+const UNENCODED_PLUS = / (\d{2}:\d{2})$/;
 const ACTION_NAME_MAX_LENGTH = 100;
+
+const withPlusRestored = ({ value }: { value: unknown }): unknown =>
+    typeof value === 'string' ? value.replace(UNENCODED_PLUS, '+$1') : value;
 
 export namespace JournalEntry {
     @ApiSchema({ name: 'JournalEntry-Person' })
@@ -144,18 +149,22 @@ export namespace JournalEntry {
     export class ListQuery extends PageQuery {
         @ApiPropertyOptional({
             example: '2026-10-01T00:00:00+03:00',
-            description: 'Entries made at this moment or later',
+            description:
+                'Entries made at this moment or later; in a URL the plus of the offset is written as %2B',
         })
         @IsOptional()
+        @Transform(withPlusRestored)
         @IsISO8601({ strict: true })
         @Matches(MOMENT)
         from?: string;
 
         @ApiPropertyOptional({
             example: '2026-11-01T00:00:00+02:00',
-            description: 'Entries made before this moment',
+            description:
+                'Entries made before this moment; in a URL the plus of the offset is written as %2B',
         })
         @IsOptional()
+        @Transform(withPlusRestored)
         @IsISO8601({ strict: true })
         @Matches(MOMENT)
         to?: string;

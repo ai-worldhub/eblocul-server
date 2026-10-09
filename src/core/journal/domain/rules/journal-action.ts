@@ -33,6 +33,7 @@ const FIELD_PATTERN = /^[a-z][a-zA-Z0-9]*$/;
 const VALUE_PATTERN = /^[a-z][a-z0-9_]*$/;
 const SCALAR_KINDS: readonly unknown[] = ['id', 'integer', 'boolean'];
 const MAX_DETAIL_FIELDS = 12;
+const MAX_INTEGER = 999_999;
 
 const invalid = (name: string, reason: string): JournalError =>
     new JournalError('JOURNAL_ACTION_INVALID', reason, { action: name });
@@ -86,7 +87,11 @@ const isOfKind = (kind: DetailKind, value: unknown): value is DetailValue => {
         return isUuid(value);
     }
     if (kind === 'integer') {
-        return typeof value === 'number' && Number.isSafeInteger(value);
+        return (
+            typeof value === 'number' &&
+            Number.isSafeInteger(value) &&
+            Math.abs(value) <= MAX_INTEGER
+        );
     }
     if (kind === 'boolean') {
         return typeof value === 'boolean';
@@ -116,12 +121,25 @@ export const detailsOf = (
                 throw refused(
                     action,
                     field,
-                    'A detail holds an id, an integer, a boolean or a declared value',
+                    'A detail holds an id, an integer of six digits at most, a boolean or a declared value',
                 );
             }
             return [field, value];
         }),
     );
+};
+
+export const assertRegistered = (
+    registered: readonly JournalAction[],
+    action: JournalAction,
+): void => {
+    if (!registered.includes(action)) {
+        throw new JournalError(
+            'JOURNAL_ACTION_NOT_REGISTERED',
+            'The journal action is not in the list of journal actions',
+            { action: action.name },
+        );
+    }
 };
 
 export const assertDistinctActions = (

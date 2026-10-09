@@ -6,7 +6,6 @@ import {
     SYSTEM_ACTOR,
 } from '../../../src/core/journal/index.ts';
 import { ROLE_ASSIGNED } from '../../../src/core/membership/index.ts';
-import { Clock } from '../../../src/shared/clock/clock.service.ts';
 import { Transactions } from '../../../src/shared/db/transactions.service.ts';
 import {
     type Actor,
@@ -19,6 +18,7 @@ import { useTestApp } from '../../utils/e2e-setup.ts';
 import {
     buildJournalWorld,
     type JournalWorld,
+    withJournalWorld,
 } from '../../utils/journal-world.ts';
 import { responseBody } from '../../utils/response-body.ts';
 
@@ -65,9 +65,7 @@ const atChisinau = (moment: Date): string =>
 
 describe('GET /nodes/:nodeId/journal-entries (e2e)', () => {
     const clock = new ClockDouble(START);
-    const testApp = useTestApp((builder) =>
-        builder.overrideProvider(Clock).useValue(clock),
-    );
+    const testApp = useTestApp(withJournalWorld(clock));
 
     let world: JournalWorld;
 
@@ -415,9 +413,9 @@ describe('GET /nodes/:nodeId/journal-entries (e2e)', () => {
         });
 
         it('describes one operation, a reading one, and lists the actions the filter accepts', () => {
-            const document = createOpenApiDocument(
-                testApp.app,
-            ) as unknown as Described;
+            const document = JSON.parse(
+                JSON.stringify(createOpenApiDocument(testApp.app)),
+            ) as Described;
             const journal = Object.entries(document.paths).filter(([path]) =>
                 path.includes('journal'),
             );
@@ -536,6 +534,21 @@ describe('GET /nodes/:nodeId/journal-entries (e2e)', () => {
             ).toEqual(entries(5, 4, 3));
         });
 
+        it('reads an offset whose plus was not encoded in the URL', async () => {
+            const [third, sixth] = [world.times[3], world.times[6]];
+            if (third === undefined || sixth === undefined) {
+                throw new Error('The journal world has no such moments');
+            }
+
+            expect(
+                await idsOf(
+                    world.chief,
+                    world.quarter.id,
+                    `?from=${atChisinau(third)}&to=${atChisinau(sixth)}`,
+                ),
+            ).toEqual(entries(5, 4, 3));
+        });
+
         it('by the period, the kind of action and the person together', async () => {
             const together = by({
                 from: moment(2),
@@ -595,7 +608,7 @@ describe('GET /nodes/:nodeId/journal-entries (e2e)', () => {
                     world.chief,
                     world.quarter.id,
                     400,
-                    by({ action: 'probe.unit_touched' }),
+                    by({ action: 'tickets.closed' }),
                 ),
             ).toMatchObject({ code: 'JOURNAL_ACTION_UNKNOWN' });
         });

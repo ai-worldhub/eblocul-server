@@ -196,6 +196,19 @@ describe('journalEntryOf', () => {
         ).toEqual(refusedFor(field));
     });
 
+    it.each([0, -1, 999_999, -999_999])(
+        'accepts the integer %d',
+        (attempts) => {
+            expect(
+                refusalOf({
+                    actor: ADMINISTRATOR,
+                    nodeId: NODE_ID,
+                    details: { ...DETAILS, attempts },
+                }),
+            ).toBeNull();
+        },
+    );
+
     it('carries nothing but the declared details into the entry', () => {
         const entry = journalEntryOf(
             defineJournalAction({ name: 'tickets.opened', details: {} }),

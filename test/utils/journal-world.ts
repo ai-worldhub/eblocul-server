@@ -1,8 +1,12 @@
+import type { TestingModuleBuilder } from '@nestjs/testing';
+import { JOURNAL_ACTIONS } from '../../src/app/journal-actions.ts';
+import { REGISTERED_JOURNAL_ACTIONS } from '../../src/core/journal/application/registered-actions.ts';
 import {
     defineJournalAction,
     type JournalActor,
     JournalService,
 } from '../../src/core/journal/index.ts';
+import { Clock } from '../../src/shared/clock/clock.service.ts';
 import {
     type NodeSnapshot,
     TreeBuildingService,
@@ -21,6 +25,15 @@ const UNIT_TOUCHED = defineJournalAction({
     name: 'probe.unit_touched',
     details: { attempts: 'integer' },
 });
+
+export const withJournalWorld =
+    (clock: ClockDouble) =>
+    (builder: TestingModuleBuilder): TestingModuleBuilder =>
+        builder
+            .overrideProvider(Clock)
+            .useValue(clock)
+            .overrideProvider(REGISTERED_JOURNAL_ACTIONS)
+            .useValue([...JOURNAL_ACTIONS, UNIT_TOUCHED]);
 
 type Holder = { accountId: string; grantId: string };
 

@@ -1,6 +1,7 @@
 import { AccessService } from '../../../src/core/authz/index.ts';
 import {
     actorOf,
+    defineJournalAction,
     JOURNAL_READ_ENTRIES,
     type JournalActor,
     JournalService,
@@ -23,6 +24,11 @@ const START = new Date('2026-10-09T09:00:00.000Z');
 const MINUTE_MS = 60_000;
 const NOBODY = '00000000-0000-7000-8000-00000000dead';
 const NOWHERE = '00000000-0000-7000-8000-00000000beef';
+
+const NOT_LISTED = defineJournalAction({
+    name: 'membership.role_assigned',
+    details: {},
+});
 
 class Interrupted extends Error {}
 
@@ -385,6 +391,28 @@ describe('Action journal: what membership records (e2e)', () => {
             ).rejects.toMatchObject({ code: 'JOURNAL_ENTRY_INVALID' });
 
             expect(await testApp.db.nodeAssignment.count()).toBe(0);
+        });
+
+        it('refuses an action that is not in the list of journal actions, and undoes what was done before it', async () => {
+            const residentId = await setup.addAccount();
+            const work = transactions().run(async (tx) => {
+                await testApp.app.get(UnitMembershipService).bind(tx, {
+                    accountId: residentId,
+                    unitId: tree.apartment.id,
+                    role: 'owner',
+                });
+                await testApp.app.get(JournalService).record(tx, NOT_LISTED, {
+                    actor: SYSTEM_ACTOR,
+                    nodeId: tree.quarter.id,
+                    details: {},
+                });
+            });
+
+            await expect(work).rejects.toMatchObject({
+                code: 'JOURNAL_ACTION_NOT_REGISTERED',
+            });
+            expect(await testApp.db.unitMembership.count()).toBe(0);
+            expect(await testApp.db.journalEntry.count()).toBe(0);
         });
 
         it('undoes everything done before an entry on a node that does not exist', async () => {
