@@ -224,6 +224,37 @@ describe('Jobs time limit (e2e)', () => {
         expect((await jobOf(TIMED_JOB.kind)).attempts).toBe(1);
     });
 
+    it('stops the process even when the failed attempt cannot be recorded, and the job is retaken once its lease runs out', async () => {
+        deaf(worker.timed);
+        await start(worker.timed, 'hung');
+        const { id } = await jobOf(TIMED_JOB.kind);
+        await pass(TIMED_LIMIT_MS);
+        worker.repository.refusedLocks.add(id);
+
+        await pass(CANCEL_GRACE_MS);
+
+        expect(worker.process.terminations).toBe(1);
+        expect(events('jobs.job_failure_unrecorded')).toEqual([
+            { jobId: id, kind: TIMED_JOB.kind },
+        ]);
+        expect(await jobOf(TIMED_JOB.kind)).toMatchObject({
+            state: 'running',
+            attempts: 1,
+            leaseExpiresAt: after(NOW, LEASE_MS),
+        });
+
+        worker.repository.refusedLocks.clear();
+        worker.timed.behaviour = () => Promise.resolve();
+        worker.clock.advance(LEASE_MS - TIMED_LIMIT_MS - CANCEL_GRACE_MS);
+        expect(await worker.runner.runNext(['p1'])).toBe(true);
+
+        expect(worker.timed.runs).toEqual([
+            { label: 'hung', attempt: 1 },
+            { label: 'hung', attempt: 2 },
+        ]);
+        expect(await worker.db.job.count()).toBe(0);
+    });
+
     it('declares the job dead when the handler that hung had its last attempt', async () => {
         listening(worker.timed);
         const first = await start(worker.timed, 'hung');
@@ -334,6 +365,22 @@ describe('Jobs time limit (e2e)', () => {
             attempts: 0,
         });
         expect(worker.process.terminations).toBe(0);
+    });
+
+    it('names the failed attempt it could not record while stopping, not a release', async () => {
+        deaf(worker.timed);
+        await start(worker.timed, 'overdue');
+        const { id } = await jobOf(TIMED_JOB.kind);
+        await pass(TIMED_LIMIT_MS);
+        worker.repository.refusedLocks.add(id);
+
+        worker.runner.stopActive();
+        expect(await worker.runner.releaseActive()).toBe(0);
+
+        expect(events('jobs.job_failure_unrecorded')).toEqual([
+            { jobId: id, kind: TIMED_JOB.kind },
+        ]);
+        expect(events('jobs.job_release_failed')).toEqual([]);
     });
 
     it('counts the attempt when an overdue handler gives in only after the process was told to stop', async () => {

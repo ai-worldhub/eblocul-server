@@ -3,6 +3,8 @@ import { NodeWorkerProcess } from '../../../src/core/jobs/infrastructure/node/no
 
 const FORCED_EXIT_AFTER_MS = 15_000;
 
+class Exited extends Error {}
+
 describe('NodeWorkerProcess', () => {
     let kill: MockInstance<typeof process.kill>;
     let exit: MockInstance<typeof process.exit>;
@@ -15,7 +17,9 @@ describe('NodeWorkerProcess', () => {
     beforeEach(() => {
         vi.useFakeTimers();
         kill = vi.spyOn(process, 'kill').mockReturnValue(true);
-        exit = vi.spyOn(process, 'exit').mockReturnValue(undefined as never);
+        exit = vi.spyOn(process, 'exit').mockImplementation(() => {
+            throw new Exited('exit');
+        });
     });
 
     afterEach(() => {
@@ -45,8 +49,10 @@ describe('NodeWorkerProcess', () => {
         const workerProcess = new NodeWorkerProcess();
 
         workerProcess.terminate();
-        workerProcess.onApplicationShutdown();
 
+        expect(() => {
+            workerProcess.onApplicationShutdown();
+        }).toThrow(Exited);
         expect(calls().exit).toEqual([[1]]);
     });
 
@@ -55,8 +61,8 @@ describe('NodeWorkerProcess', () => {
 
         vi.advanceTimersByTime(FORCED_EXIT_AFTER_MS - 1);
         expect(calls().exit).toEqual([]);
-        vi.advanceTimersByTime(1);
 
+        expect(() => vi.advanceTimersByTime(1)).toThrow(Exited);
         expect(calls().exit).toEqual([[1]]);
     });
 

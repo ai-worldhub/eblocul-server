@@ -107,14 +107,17 @@ export class JobRunnerService {
                 this._cancelOverdue(run, now);
             }
         }
-        const hung = running.filter(
-            (run) =>
-                run.timedOutAt !== null && isCancelIgnored(run.timedOutAt, now),
+        const hung = running.flatMap((run) =>
+            run.timedOutAt !== null && isCancelIgnored(run.timedOutAt, now)
+                ? [{ run, waitedMs: now.getTime() - run.timedOutAt.getTime() }]
+                : [],
         );
         if (hung.length === 0) {
             return;
         }
-        await Promise.all(hung.map((run) => this._abandon(run, now)));
+        await Promise.all(
+            hung.map(({ run, waitedMs }) => this._abandon(run, waitedMs)),
+        );
         this._process.terminate();
     }
 
@@ -135,11 +138,13 @@ export class JobRunnerService {
     async releaseActive(): Promise<number> {
         const returned = await Promise.all(
             [...this._active.values()].map((run) =>
-                this._contained(run, 'jobs.job_release_failed', () =>
-                    run.timedOutAt === null
-                        ? this._release(run)
-                        : this._fail(run),
-                ),
+                run.timedOutAt === null
+                    ? this._contained(run, 'jobs.job_release_failed', () =>
+                          this._release(run),
+                      )
+                    : this._contained(run, 'jobs.job_failure_unrecorded', () =>
+                          this._fail(run),
+                      ),
             ),
         );
         return returned.filter((isReturned) => isReturned === true).length;
@@ -230,14 +235,14 @@ export class JobRunnerService {
         );
     }
 
-    private async _abandon(run: ActiveRun, now: Date): Promise<void> {
+    private async _abandon(run: ActiveRun, waitedMs: number): Promise<void> {
         run.isHung = true;
         this._active.delete(run.leaseId);
         this._events.error('jobs.handler_hung', {
             jobId: run.jobId,
             kind: run.kind,
             attempt: run.attempt,
-            waitedMs: now.getTime() - (run.timedOutAt ?? now).getTime(),
+            waitedMs,
         });
         await this._contained(run, 'jobs.job_failure_unrecorded', () =>
             this._fail(run),
