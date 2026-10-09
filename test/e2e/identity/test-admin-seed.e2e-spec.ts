@@ -34,6 +34,7 @@ describe('Seed identity.test_admin (e2e)', () => {
         await run.close();
 
         const accounts = await testApp.db.account.findMany({
+            where: { email: TEST_ADMIN.email },
             include: { password: true },
         });
         expect(accounts).toHaveLength(1);

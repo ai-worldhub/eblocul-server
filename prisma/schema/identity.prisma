@@ -24,8 +24,10 @@ model Account {
   createdAt       DateTime  @map("created_at") @db.Timestamptz(3)
   phoneVerifiedAt DateTime? @map("phone_verified_at") @db.Timestamptz(3)
 
-  password AccountPassword?
-  sessions Session[]
+  password        AccountPassword?
+  sessions        Session[]
+  unitMemberships UnitMembership[]
+  nodeAssignments NodeAssignment[]
 
   @@map("accounts")
   @@schema("identity")
