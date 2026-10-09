@@ -5,6 +5,10 @@ export {
     ZONE_RETURNED,
     ZONE_TAKEN,
 } from './application/membership.journal-actions.ts';
+export {
+    TEST_RESIDENT,
+    TestResidentSeed,
+} from './application/seeds/test-resident.seed.ts';
 export { TestRolesSeed } from './application/seeds/test-roles.seed.ts';
 export {
     type NewAssignment,
