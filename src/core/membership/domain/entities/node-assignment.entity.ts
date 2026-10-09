@@ -16,8 +16,14 @@ export type NodeAssignmentSnapshot = {
 };
 
 const CHIEF: AssignmentRole = 'chief_administrator';
-const ZONE_ADMINISTRATOR: AssignmentRole = 'administrator';
 const TAKEOVER: AssignmentRole = 'zone_takeover';
+
+export const chiefRequired = (zoneId: string): MembershipError =>
+    new MembershipError(
+        'MEMBERSHIP_CHIEF_REQUIRED',
+        'Only an active chief administrator of the quarter takes its zone',
+        { nodeId: zoneId },
+    );
 
 export class NodeAssignmentEntity {
     private constructor(private snapshot: NodeAssignmentSnapshot) {}
@@ -54,11 +60,7 @@ export class NodeAssignmentEntity {
             !this.isActive() ||
             this.snapshot.nodeId !== input.zone.complexId
         ) {
-            throw new MembershipError(
-                'MEMBERSHIP_CHIEF_REQUIRED',
-                'Only an active chief administrator of the quarter takes its zone',
-                { nodeId: input.zone.id },
-            );
+            throw chiefRequired(input.zone.id);
         }
         assertRolePlace(TAKEOVER, input.zone);
         return new NodeAssignmentEntity({
@@ -85,10 +87,6 @@ export class NodeAssignmentEntity {
 
     isTakeover(): boolean {
         return this.snapshot.role === TAKEOVER;
-    }
-
-    releasesTakeoversOfNode(): boolean {
-        return this.snapshot.role === ZONE_ADMINISTRATOR;
     }
 
     holdsTakeovers(): boolean {

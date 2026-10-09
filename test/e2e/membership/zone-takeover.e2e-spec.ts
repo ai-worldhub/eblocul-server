@@ -1,6 +1,7 @@
 import {
     NodeAssignmentService,
     type NodeAssignmentSnapshot,
+    ZoneTakeoverService,
 } from '../../../src/core/membership/index.ts';
 import {
     type NodeSnapshot,
@@ -17,6 +18,10 @@ import {
     membershipRefusalOf,
     membershipSetupOf,
 } from '../../utils/membership-setup.ts';
+import {
+    fulfilledValueOf,
+    runOverlapped,
+} from '../../utils/overlapped-transactions.ts';
 import { type SeededTree, seedTree } from '../../utils/seeded-tree.ts';
 
 const NOW = new Date('2026-10-09T09:00:00.000Z');
@@ -351,6 +356,87 @@ describe('Zone takeover by the chief administrator (e2e)', () => {
             );
 
             expect((await stored(takeover.id)).endedAt).toEqual(clock.now());
+        });
+    });
+
+    describe('simultaneous work', () => {
+        it('ends a takeover that is still being made when the administrator of the zone is assigned', async () => {
+            const { chiefId, housesZone } = await quarterWithChief();
+            const zoneAdminId = await setup.addAccount();
+
+            const { first: takeover, second } = await runOverlapped({
+                db: testApp.db,
+                transactions: testApp.app.get(Transactions),
+                first: (tx) =>
+                    testApp.app.get(ZoneTakeoverService).takeZone(tx, {
+                        accountId: chiefId,
+                        nodeId: housesZone.id,
+                    }),
+                second: (tx) =>
+                    testApp.app.get(NodeAssignmentService).assign(tx, {
+                        accountId: zoneAdminId,
+                        nodeId: housesZone.id,
+                        role: 'administrator',
+                    }),
+            });
+
+            expect(fulfilledValueOf(second)).toMatchObject({
+                role: 'administrator',
+                endedAt: null,
+            });
+            expect((await stored(takeover.id)).endedAt).toEqual(clock.now());
+            expect(await activeTakeoversOn(housesZone.id)).toBe(0);
+        });
+
+        it('keeps a takeover made after the administrator of the zone has been assigned', async () => {
+            const { chiefId, housesZone } = await quarterWithChief();
+            const zoneAdminId = await setup.addAccount();
+
+            const { first: administrator, second } = await runOverlapped({
+                db: testApp.db,
+                transactions: testApp.app.get(Transactions),
+                first: (tx) =>
+                    testApp.app.get(NodeAssignmentService).assign(tx, {
+                        accountId: zoneAdminId,
+                        nodeId: housesZone.id,
+                        role: 'administrator',
+                    }),
+                second: (tx) =>
+                    testApp.app.get(ZoneTakeoverService).takeZone(tx, {
+                        accountId: chiefId,
+                        nodeId: housesZone.id,
+                    }),
+            });
+
+            const takeover = fulfilledValueOf(second);
+            expect(await stored(administrator.id)).toEqual(administrator);
+            expect(await stored(takeover.id)).toEqual(takeover);
+            expect(await activeTakeoversOn(housesZone.id)).toBe(1);
+        });
+
+        it('refuses a takeover that waited for the end of the role of the chief administrator', async () => {
+            const { chiefId, quarter, housesZone } = await quarterWithChief();
+            const role = await testApp.db.nodeAssignment.findFirstOrThrow({
+                where: { accountId: chiefId, nodeId: quarter.id },
+            });
+
+            const { second } = await runOverlapped({
+                db: testApp.db,
+                transactions: testApp.app.get(Transactions),
+                first: (tx) =>
+                    testApp.app.get(NodeAssignmentService).end(tx, role.id),
+                second: (tx) =>
+                    testApp.app.get(ZoneTakeoverService).takeZone(tx, {
+                        accountId: chiefId,
+                        nodeId: housesZone.id,
+                    }),
+            });
+
+            expect(second).toMatchObject({
+                status: 'rejected',
+                reason: { code: 'MEMBERSHIP_CHIEF_REQUIRED' },
+            });
+            expect(await activeTakeoversOn(housesZone.id)).toBe(0);
         });
     });
 

@@ -1,10 +1,20 @@
+import {
+    UnitMembershipService,
+    type UnitMembershipSnapshot,
+} from '../../../src/core/membership/index.ts';
 import { Clock } from '../../../src/shared/clock/clock.service.ts';
+import { Transactions } from '../../../src/shared/db/transactions.service.ts';
+import type { Tx } from '../../../src/shared/db/tx.ts';
 import { ClockDouble } from '../../utils/clock.double.ts';
 import { useTestApp } from '../../utils/e2e-setup.ts';
 import {
     membershipRefusalOf,
     membershipSetupOf,
 } from '../../utils/membership-setup.ts';
+import {
+    fulfilledValueOf,
+    runOverlapped,
+} from '../../utils/overlapped-transactions.ts';
 import { seedTree } from '../../utils/seeded-tree.ts';
 
 const NOW = new Date('2026-10-09T09:00:00.000Z');
@@ -115,16 +125,24 @@ describe('Unit memberships (e2e)', () => {
         expect(await testApp.db.unitMembership.count()).toBe(2);
     });
 
-    it('gives two simultaneous creations of one membership the same record', async () => {
+    it('makes a second creation of one membership wait for the first and gives it the same record', async () => {
         const { apartment } = await seedTree(testApp);
         const accountId = await setup.addAccount();
+        const bindOwner = (tx: Tx): Promise<UnitMembershipSnapshot> =>
+            testApp.app.get(UnitMembershipService).bind(tx, {
+                accountId,
+                unitId: apartment.id,
+                role: 'owner',
+            });
 
-        const [first, second] = await Promise.all([
-            setup.bind(accountId, apartment.id, 'owner'),
-            setup.bind(accountId, apartment.id, 'owner'),
-        ]);
+        const { first, second } = await runOverlapped({
+            db: testApp.db,
+            transactions: testApp.app.get(Transactions),
+            first: bindOwner,
+            second: bindOwner,
+        });
 
-        expect(second.id).toBe(first.id);
+        expect(fulfilledValueOf(second)).toEqual(first);
         expect(await testApp.db.unitMembership.count()).toBe(1);
     });
 

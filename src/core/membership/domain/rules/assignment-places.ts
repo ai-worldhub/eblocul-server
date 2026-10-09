@@ -21,6 +21,8 @@ const ROLE_NODE_KINDS: Record<AssignmentRole, readonly NodeKind[]> = {
 };
 
 const ROOT_ONLY_ROLE: AssignmentRole = 'chief_administrator';
+const ZONE_HOLDER_ROLE: AssignmentRole = 'administrator';
+const TAKEN_NODE_KIND: NodeKind = 'zone';
 
 export const assertRolePlace = (
     role: AssignmentRole,
@@ -37,3 +39,8 @@ export const assertRolePlace = (
         );
     }
 };
+
+export const endsTakeoversOfNode = (
+    role: AssignmentRole,
+    node: AssignedNode,
+): boolean => role === ZONE_HOLDER_ROLE && node.kind === TAKEN_NODE_KIND;

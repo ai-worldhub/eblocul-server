@@ -1,10 +1,20 @@
+import {
+    NodeAssignmentService,
+    type NodeAssignmentSnapshot,
+} from '../../../src/core/membership/index.ts';
 import { Clock } from '../../../src/shared/clock/clock.service.ts';
+import { Transactions } from '../../../src/shared/db/transactions.service.ts';
+import type { Tx } from '../../../src/shared/db/tx.ts';
 import { ClockDouble } from '../../utils/clock.double.ts';
 import { useTestApp } from '../../utils/e2e-setup.ts';
 import {
     membershipRefusalOf,
     membershipSetupOf,
 } from '../../utils/membership-setup.ts';
+import {
+    fulfilledValueOf,
+    runOverlapped,
+} from '../../utils/overlapped-transactions.ts';
 import { seedTree } from '../../utils/seeded-tree.ts';
 
 const NOW = new Date('2026-10-09T09:00:00.000Z');
@@ -117,16 +127,24 @@ describe('Node assignments (e2e)', () => {
         expect(await testApp.db.nodeAssignment.count()).toBe(1);
     });
 
-    it('gives two simultaneous creations of one assignment the same record', async () => {
+    it('makes a second creation of one assignment wait for the first and gives it the same record', async () => {
         const { house } = await seedTree(testApp);
         const accountId = await setup.addAccount();
+        const assignChairman = (tx: Tx): Promise<NodeAssignmentSnapshot> =>
+            testApp.app.get(NodeAssignmentService).assign(tx, {
+                accountId,
+                nodeId: house.id,
+                role: 'chairman',
+            });
 
-        const [first, second] = await Promise.all([
-            setup.assign(accountId, house.id, 'chairman'),
-            setup.assign(accountId, house.id, 'chairman'),
-        ]);
+        const { first, second } = await runOverlapped({
+            db: testApp.db,
+            transactions: testApp.app.get(Transactions),
+            first: assignChairman,
+            second: assignChairman,
+        });
 
-        expect(second.id).toBe(first.id);
+        expect(fulfilledValueOf(second)).toEqual(first);
         expect(await testApp.db.nodeAssignment.count()).toBe(1);
     });
 

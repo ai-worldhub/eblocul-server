@@ -5,12 +5,7 @@ import type {
 } from '../../structure/index.ts';
 import { MembershipError } from '../domain/membership.errors.ts';
 
-export const nodeOrRefuse = async (
-    tree: TreeReadingService,
-    tx: Tx,
-    nodeId: string,
-): Promise<NodeSnapshot> => {
-    const node = await tree.findNode(tx, nodeId);
+const found = (node: NodeSnapshot | null, nodeId: string): NodeSnapshot => {
     if (node === null) {
         throw new MembershipError(
             'MEMBERSHIP_NODE_NOT_FOUND',
@@ -20,3 +15,15 @@ export const nodeOrRefuse = async (
     }
     return node;
 };
+
+export const nodeOrRefuse = async (
+    tree: TreeReadingService,
+    tx: Tx,
+    nodeId: string,
+): Promise<NodeSnapshot> => found(await tree.findNode(tx, nodeId), nodeId);
+
+export const lockedNodeOrRefuse = async (
+    tree: TreeReadingService,
+    tx: Tx,
+    nodeId: string,
+): Promise<NodeSnapshot> => found(await tree.lockNode(tx, nodeId), nodeId);

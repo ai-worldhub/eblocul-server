@@ -9,11 +9,14 @@ import {
     type NodeAssignmentSnapshot,
 } from '../../domain/entities/node-assignment.entity.ts';
 import { MembershipError } from '../../domain/membership.errors.ts';
-import type { AppointedRole } from '../../domain/rules/assignment-places.ts';
+import {
+    type AppointedRole,
+    endsTakeoversOfNode,
+} from '../../domain/rules/assignment-places.ts';
 import { NodeAssignmentRepository } from '../../ports/node-assignment.repository.ts';
 import '../membership.log-events.ts';
-import { nodeOrRefuse } from '../node-lookup.ts';
-import { ZoneTakeoverService } from './zone-takeover.service.ts';
+import { lockedNodeOrRefuse, nodeOrRefuse } from '../node-lookup.ts';
+import { TakeoverReleaseService } from './takeover-release.service.ts';
 
 export type NewAssignment = {
     accountId: string;
@@ -25,7 +28,7 @@ export type NewAssignment = {
 export class NodeAssignmentService {
     constructor(
         private readonly _assignments: NodeAssignmentRepository,
-        private readonly _takeovers: ZoneTakeoverService,
+        private readonly _takeovers: TakeoverReleaseService,
         private readonly _tree: TreeReadingService,
         private readonly _clock: Clock,
         private readonly _ids: Ids,
@@ -44,12 +47,16 @@ export class NodeAssignmentService {
             role: input.role,
             now: this._clock.now(),
         });
+        const endsTakeovers = endsTakeoversOfNode(input.role, node);
+        if (endsTakeovers) {
+            await lockedNodeOrRefuse(this._tree, tx, node.id);
+        }
         const stored = await this._assignments.addOrFindActive(tx, assignment);
         if (stored !== assignment) {
             return stored.view();
         }
-        if (assignment.releasesTakeoversOfNode()) {
-            await this._takeovers.releaseNode(tx, node.id);
+        if (endsTakeovers) {
+            await this._takeovers.endOnZone(tx, node.id);
         }
         this._events.info('membership.assigned', {
             assignmentId: assignment.view().id,
@@ -75,11 +82,7 @@ export class NodeAssignmentService {
         await this._assignments.save(tx, assignment);
         const ended = assignment.view();
         if (assignment.holdsTakeovers()) {
-            await this._takeovers.releaseAccount(
-                tx,
-                ended.accountId,
-                ended.nodeId,
-            );
+            await this._takeovers.endOfChief(tx, ended.accountId, ended.nodeId);
         }
         this._events.info('membership.assignment_ended', {
             assignmentId: ended.id,

@@ -1,8 +1,9 @@
 import { NodeAssignmentEntity } from '../../../src/core/membership/domain/entities/node-assignment.entity.ts';
-import type {
-    AppointedRole,
-    AssignedNode,
-    NodeKind,
+import {
+    type AppointedRole,
+    type AssignedNode,
+    endsTakeoversOfNode,
+    type NodeKind,
 } from '../../../src/core/membership/domain/rules/assignment-places.ts';
 
 const NOW = new Date('2026-10-09T09:00:00.000Z');
@@ -183,35 +184,40 @@ describe('NodeAssignmentEntity', () => {
         });
     });
 
-    it('knows which roles end zone takeovers', () => {
+    it('knows which records hold takeovers and which are takeovers', () => {
         const flags = (
             assignment: NodeAssignmentEntity,
         ): Record<string, boolean> => ({
-            releasesNode: assignment.releasesTakeoversOfNode(),
             holdsTakeovers: assignment.holdsTakeovers(),
             isTakeover: assignment.isTakeover(),
         });
         const chief = appoint('chief_administrator', QUARTER);
 
         expect(flags(chief)).toEqual({
-            releasesNode: false,
             holdsTakeovers: true,
             isTakeover: false,
         });
         expect(flags(appoint('administrator', nodeOf('zone')))).toEqual({
-            releasesNode: true,
             holdsTakeovers: false,
             isTakeover: false,
         });
         expect(flags(appoint('chairman', nodeOf('zone')))).toEqual({
-            releasesNode: false,
             holdsTakeovers: false,
             isTakeover: false,
         });
         expect(flags(takeZone(chief, nodeOf('zone')))).toEqual({
-            releasesNode: false,
             holdsTakeovers: false,
             isTakeover: true,
         });
+    });
+
+    it('lets only an administrator assigned to a zone end the takeovers of the node', () => {
+        const ending = ROLES.flatMap((role) =>
+            KINDS.filter((kind) => endsTakeoversOfNode(role, nodeOf(kind))).map(
+                (kind) => `${role} on ${kind}`,
+            ),
+        );
+
+        expect(ending).toEqual(['administrator on zone']);
     });
 });
