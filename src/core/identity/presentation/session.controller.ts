@@ -12,6 +12,7 @@ import {
 import type { IncomingMessage } from 'node:http';
 import { ErrorResponse } from '../../../shared/http/error.dto.ts';
 import { Public } from '../../../shared/http/public.decorator.ts';
+import { SessionOnly } from '../../../shared/http/session-only.decorator.ts';
 import { SessionService } from '../application/services/session.service.ts';
 import type { SessionContext } from '../domain/entities/session.entity.ts';
 import { CurrentSession } from './decorators/current-session.decorator.ts';
@@ -34,6 +35,7 @@ export class SessionController {
     ) {}
 
     @Get()
+    @SessionOnly()
     @ApiOperation({ summary: 'Read the current session' })
     @ApiOkResponse({ type: Session.Current })
     @ApiUnauthorizedResponse({ type: ErrorResponse })

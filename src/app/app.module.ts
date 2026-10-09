@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AuthzModule } from '../core/authz/index.ts';
 import { IdentityModule } from '../core/identity/index.ts';
 import { JobsModule } from '../core/jobs/index.ts';
 import { MembershipModule } from '../core/membership/index.ts';
@@ -10,6 +11,7 @@ import { ClockModule } from '../shared/clock/clock.module.ts';
 import { HealthModule } from '../shared/health/health.module.ts';
 import { IdsModule } from '../shared/ids/ids.module.ts';
 import { AppLoggingModule } from '../shared/logging/logging.module.ts';
+import { ACCESS_ACTIONS } from './access-actions.ts';
 
 @Module({
     imports: [
@@ -24,6 +26,7 @@ import { AppLoggingModule } from '../shared/logging/logging.module.ts';
         IdentityModule,
         StructureModule,
         MembershipModule,
+        AuthzModule.register(ACCESS_ACTIONS),
     ],
     controllers: [],
     providers: [],
