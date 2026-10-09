@@ -1,6 +1,12 @@
 export { StructureModule } from './structure.module.ts';
-export { TestHouseSeed } from './application/seeds/test-house.seed.ts';
-export { TestQuarterSeed } from './application/seeds/test-quarter.seed.ts';
+export {
+    TEST_HOUSE,
+    TestHouseSeed,
+} from './application/seeds/test-house.seed.ts';
+export {
+    TEST_QUARTER,
+    TestQuarterSeed,
+} from './application/seeds/test-quarter.seed.ts';
 export {
     type NewChild,
     type NewRoot,

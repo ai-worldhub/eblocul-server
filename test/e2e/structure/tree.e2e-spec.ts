@@ -587,6 +587,62 @@ describe('Structure tree (e2e)', () => {
         });
     });
 
+    describe('single facts for other modules', () => {
+        it('finds a node and a unit by id, also inside the transaction that created them', async () => {
+            const { quarter, building: house, apartment } = await addQuarter();
+
+            const inside = await transactions().run(async (tx) => {
+                const line = await building().createChild(tx, {
+                    id: nextId(),
+                    parentId: quarter.id,
+                    kind: 'line',
+                    name: 'Line B',
+                    address: null,
+                });
+                const unit = await building().createUnit(tx, {
+                    id: nextId(),
+                    nodeId: line.id,
+                    type: 'house',
+                    number: '1',
+                    floor: null,
+                });
+                return {
+                    line,
+                    unit,
+                    foundLine: await reading().findNode(tx, line.id),
+                    foundUnit: await reading().findUnit(tx, unit.id),
+                };
+            });
+
+            expect(inside.foundLine).toEqual(inside.line);
+            expect(inside.foundUnit).toEqual(inside.unit);
+            expect(await reading().findNode(testApp.db, house.id)).toEqual(
+                house,
+            );
+            expect(await reading().findUnit(testApp.db, apartment.id)).toEqual(
+                apartment,
+            );
+        });
+
+        it('answers null for an unknown node and an unknown unit', async () => {
+            expect(await reading().findNode(testApp.db, UNKNOWN_ID)).toBeNull();
+            expect(await reading().findUnit(testApp.db, UNKNOWN_ID)).toBeNull();
+        });
+
+        it('finds the root of a complex by its name, and no node below the root', async () => {
+            const { quarter, apartmentsZone } = await addQuarter();
+
+            expect(await reading().rootIdByName(quarter.name)).toBe(quarter.id);
+            expect(
+                await reading().rootIdByName(apartmentsZone.name),
+            ).toBeNull();
+            expect(await reading().rootExistsByName(quarter.name)).toBe(true);
+            expect(await reading().rootExistsByName('No Such Complex')).toBe(
+                false,
+            );
+        });
+    });
+
     describe('refusals', () => {
         it('refuses a child that breaks the order of levels and stores nothing', async () => {
             const { house } = await addHouse();

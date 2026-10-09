@@ -23,6 +23,10 @@ const ROW_LOCK = Prisma.sql`FOR NO KEY UPDATE OF n`;
 
 @Injectable()
 export class PrismaNodeRepository implements NodeRepository {
+    findById(tx: Tx, nodeId: string): Promise<NodeEntity | null> {
+        return this._load(tx, nodeId, Prisma.empty);
+    }
+
     lockById(tx: Tx, nodeId: string): Promise<NodeEntity | null> {
         return this._load(tx, nodeId, ROW_LOCK);
     }
