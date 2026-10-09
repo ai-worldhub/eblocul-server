@@ -1,5 +1,4 @@
 import { ConfigService } from '@nestjs/config';
-import { LAB_SEEDS } from '../../../src/app/lab-seeds.ts';
 import { AccountService } from '../../../src/core/identity/application/services/account.service.ts';
 import {
     TEST_ADMIN,
@@ -27,14 +26,13 @@ describe('Seed identity.test_admin (e2e)', () => {
     });
 
     it('creates the administrator once and lets him sign in', async () => {
-        const run = await createSeedRun(LAB_SEEDS);
+        const run = await createSeedRun([TestAdminSeed]);
 
         await run.runner.run();
         await run.runner.run();
         await run.close();
 
         const accounts = await testApp.db.account.findMany({
-            where: { email: TEST_ADMIN.email },
             include: { password: true },
         });
         expect(accounts).toHaveLength(1);
