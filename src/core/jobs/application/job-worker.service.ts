@@ -94,6 +94,7 @@ export class JobWorkerService
 
     private async _keepLeases(): Promise<void> {
         while (!this._stopping.signal.aborted) {
+            await this._guarded(() => this._runner.enforceTimeLimits());
             await this._guarded(() => this._runner.renewLeases());
             await pause(this._leaseCheckIntervalMs, this._stopping.signal);
         }

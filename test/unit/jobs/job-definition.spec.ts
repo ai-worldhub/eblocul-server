@@ -1,20 +1,50 @@
 import {
     CLASS_RETRY_POLICIES,
+    CLASS_TIME_LIMITS_MS,
     JOB_CLASSES,
     parseJobClasses,
 } from '../../../src/core/jobs/domain/job-class.ts';
 import { defineJob } from '../../../src/core/jobs/domain/job-definition.ts';
 
 describe('defineJob', () => {
-    it('takes the retry policy of its class', () => {
+    it('takes the retry policy and the time limit of its class', () => {
         const job = defineJob({ kind: 'probe.work', class: 'p2' });
 
         expect(job).toEqual({
             kind: 'probe.work',
             class: 'p2',
             retry: CLASS_RETRY_POLICIES.p2,
+            timeLimitMs: CLASS_TIME_LIMITS_MS.p2,
         });
     });
+
+    it.each([1, 20_000, 3_600_000])(
+        'lets the job set its own time limit of %d ms, below or above the class',
+        (timeLimitMs) => {
+            const job = defineJob({
+                kind: 'probe.work',
+                class: 'p2',
+                timeLimitMs,
+            });
+
+            expect(job.timeLimitMs).toBe(timeLimitMs);
+            expect(job.retry).toEqual(CLASS_RETRY_POLICIES.p2);
+        },
+    );
+
+    it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+        'refuses the time limit %d',
+        (timeLimitMs) => {
+            expect(() =>
+                defineJob({ kind: 'probe.work', class: 'p2', timeLimitMs }),
+            ).toThrow(
+                expect.objectContaining({
+                    code: 'JOBS_TIME_LIMIT_INVALID',
+                    details: { kind: 'probe.work', timeLimitMs },
+                }),
+            );
+        },
+    );
 
     it('lets the job replace a part of the policy', () => {
         const job = defineJob({
@@ -50,6 +80,19 @@ describe('CLASS_RETRY_POLICIES', () => {
                 policy.baseDelayMs,
             );
         }
+    });
+});
+
+describe('CLASS_TIME_LIMITS_MS', () => {
+    it('holds the limits of the decision on the queue', () => {
+        expect(CLASS_TIME_LIMITS_MS).toEqual({
+            p0: 10_000,
+            p1: 30_000,
+            p2: 60_000,
+            p3: 300_000,
+            p4_short: 60_000,
+            p4_long: 900_000,
+        });
     });
 });
 

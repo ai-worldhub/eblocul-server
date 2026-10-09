@@ -6,9 +6,11 @@ import {
 import { JobRunnerService } from './application/job-runner.service.ts';
 import { JobWorkerService } from './application/job-worker.service.ts';
 import { MathRetryJitter } from './infrastructure/node/math-retry-jitter.ts';
+import { NodeWorkerProcess } from './infrastructure/node/node-worker-process.ts';
 import { JobsModule } from './jobs.module.ts';
 import type { JobHandlerType } from './ports/job-handler.port.ts';
 import { RetryJitter } from './ports/retry-jitter.port.ts';
+import { WorkerProcess } from './ports/worker-process.port.ts';
 
 @Module({})
 export class JobsWorkerModule {
@@ -19,6 +21,7 @@ export class JobsWorkerModule {
             providers: [
                 { provide: JOB_HANDLER_TYPES, useValue: handlers },
                 { provide: RetryJitter, useClass: MathRetryJitter },
+                { provide: WorkerProcess, useClass: NodeWorkerProcess },
                 JobHandlerRegistry,
                 JobRunnerService,
                 JobWorkerService,

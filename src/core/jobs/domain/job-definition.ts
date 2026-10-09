@@ -1,4 +1,8 @@
-import { CLASS_RETRY_POLICIES, type JobClass } from './job-class.ts';
+import {
+    CLASS_RETRY_POLICIES,
+    CLASS_TIME_LIMITS_MS,
+    type JobClass,
+} from './job-class.ts';
 import { JobsError } from './jobs.errors.ts';
 import type { RetryPolicy } from './retry-policy.ts';
 
@@ -24,6 +28,7 @@ export type JobDefinition<P extends JobPayload = JobPayload> = {
     readonly kind: string;
     readonly class: JobClass;
     readonly retry: RetryPolicy;
+    readonly timeLimitMs: number;
     readonly payloadShape?: P;
 };
 
@@ -31,6 +36,7 @@ export type JobDefinitionInput = {
     kind: string;
     class: JobClass;
     retry?: Partial<RetryPolicy>;
+    timeLimitMs?: number;
 };
 
 export const defineJob = <P extends JobPayload>(
@@ -43,6 +49,14 @@ export const defineJob = <P extends JobPayload>(
             { kind: input.kind },
         );
     }
+    const timeLimitMs = input.timeLimitMs ?? CLASS_TIME_LIMITS_MS[input.class];
+    if (!Number.isInteger(timeLimitMs) || timeLimitMs <= 0) {
+        throw new JobsError(
+            'JOBS_TIME_LIMIT_INVALID',
+            'Job time limit is a positive whole number of milliseconds',
+            { kind: input.kind, timeLimitMs },
+        );
+    }
     const byClass = CLASS_RETRY_POLICIES[input.class];
     return {
         kind: input.kind,
@@ -52,5 +66,6 @@ export const defineJob = <P extends JobPayload>(
             baseDelayMs: input.retry?.baseDelayMs ?? byClass.baseDelayMs,
             maxDelayMs: input.retry?.maxDelayMs ?? byClass.maxDelayMs,
         },
+        timeLimitMs,
     };
 };
