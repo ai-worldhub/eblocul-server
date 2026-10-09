@@ -1,3 +1,4 @@
+import { SYSTEM_ACTOR } from '../../../src/core/journal/index.ts';
 import {
     NodeAssignmentService,
     type NodeAssignmentSnapshot,
@@ -205,11 +206,15 @@ describe('Zone takeover by the chief administrator (e2e)', () => {
             const inside = await testApp.app
                 .get(Transactions)
                 .run(async (tx) => {
-                    await testApp.app.get(NodeAssignmentService).assign(tx, {
-                        accountId: zoneAdminId,
-                        nodeId: housesZone.id,
-                        role: 'administrator',
-                    });
+                    await testApp.app.get(NodeAssignmentService).assign(
+                        tx,
+                        {
+                            accountId: zoneAdminId,
+                            nodeId: housesZone.id,
+                            role: 'administrator',
+                        },
+                        SYSTEM_ACTOR,
+                    );
                     return tx.nodeAssignment.findUniqueOrThrow({
                         where: { id: takeover.id },
                     });
@@ -239,11 +244,15 @@ describe('Zone takeover by the chief administrator (e2e)', () => {
             const takeover = await setup.takeZone(chiefId, housesZone.id);
 
             const work = testApp.app.get(Transactions).run(async (tx) => {
-                await testApp.app.get(NodeAssignmentService).assign(tx, {
-                    accountId: zoneAdminId,
-                    nodeId: housesZone.id,
-                    role: 'administrator',
-                });
+                await testApp.app.get(NodeAssignmentService).assign(
+                    tx,
+                    {
+                        accountId: zoneAdminId,
+                        nodeId: housesZone.id,
+                        role: 'administrator',
+                    },
+                    SYSTEM_ACTOR,
+                );
                 throw new Error(ROLLBACK);
             });
 
@@ -389,16 +398,24 @@ describe('Zone takeover by the chief administrator (e2e)', () => {
                 db: testApp.db,
                 transactions: testApp.app.get(Transactions),
                 first: (tx) =>
-                    testApp.app.get(ZoneTakeoverService).takeZone(tx, {
-                        accountId: chiefId,
-                        nodeId: housesZone.id,
-                    }),
+                    testApp.app.get(ZoneTakeoverService).takeZone(
+                        tx,
+                        {
+                            accountId: chiefId,
+                            nodeId: housesZone.id,
+                        },
+                        SYSTEM_ACTOR,
+                    ),
                 second: (tx) =>
-                    testApp.app.get(NodeAssignmentService).assign(tx, {
-                        accountId: zoneAdminId,
-                        nodeId: housesZone.id,
-                        role: 'administrator',
-                    }),
+                    testApp.app.get(NodeAssignmentService).assign(
+                        tx,
+                        {
+                            accountId: zoneAdminId,
+                            nodeId: housesZone.id,
+                            role: 'administrator',
+                        },
+                        SYSTEM_ACTOR,
+                    ),
             });
 
             expect(fulfilledValueOf(second)).toMatchObject({
@@ -417,16 +434,24 @@ describe('Zone takeover by the chief administrator (e2e)', () => {
                 db: testApp.db,
                 transactions: testApp.app.get(Transactions),
                 first: (tx) =>
-                    testApp.app.get(NodeAssignmentService).assign(tx, {
-                        accountId: zoneAdminId,
-                        nodeId: housesZone.id,
-                        role: 'administrator',
-                    }),
+                    testApp.app.get(NodeAssignmentService).assign(
+                        tx,
+                        {
+                            accountId: zoneAdminId,
+                            nodeId: housesZone.id,
+                            role: 'administrator',
+                        },
+                        SYSTEM_ACTOR,
+                    ),
                 second: (tx) =>
-                    testApp.app.get(ZoneTakeoverService).takeZone(tx, {
-                        accountId: chiefId,
-                        nodeId: housesZone.id,
-                    }),
+                    testApp.app.get(ZoneTakeoverService).takeZone(
+                        tx,
+                        {
+                            accountId: chiefId,
+                            nodeId: housesZone.id,
+                        },
+                        SYSTEM_ACTOR,
+                    ),
             });
 
             const takeover = fulfilledValueOf(second);
@@ -450,13 +475,19 @@ describe('Zone takeover by the chief administrator (e2e)', () => {
                 db: testApp.db,
                 transactions: testApp.app.get(Transactions),
                 first: (tx) =>
-                    testApp.app.get(NodeAssignmentService).end(tx, only.id),
+                    testApp.app
+                        .get(NodeAssignmentService)
+                        .end(tx, only.id, SYSTEM_ACTOR),
                 second: (tx) =>
-                    testApp.app.get(NodeAssignmentService).assign(tx, {
-                        accountId: secondAdminId,
-                        nodeId: apartmentsZone.id,
-                        role: 'administrator',
-                    }),
+                    testApp.app.get(NodeAssignmentService).assign(
+                        tx,
+                        {
+                            accountId: secondAdminId,
+                            nodeId: apartmentsZone.id,
+                            role: 'administrator',
+                        },
+                        SYSTEM_ACTOR,
+                    ),
             });
 
             expect(fulfilledValueOf(second)).toMatchObject({ endedAt: null });
@@ -479,13 +510,19 @@ describe('Zone takeover by the chief administrator (e2e)', () => {
                 db: testApp.db,
                 transactions: testApp.app.get(Transactions),
                 first: (tx) =>
-                    testApp.app.get(NodeAssignmentService).assign(tx, {
-                        accountId: secondAdminId,
-                        nodeId: apartmentsZone.id,
-                        role: 'administrator',
-                    }),
+                    testApp.app.get(NodeAssignmentService).assign(
+                        tx,
+                        {
+                            accountId: secondAdminId,
+                            nodeId: apartmentsZone.id,
+                            role: 'administrator',
+                        },
+                        SYSTEM_ACTOR,
+                    ),
                 second: (tx) =>
-                    testApp.app.get(NodeAssignmentService).end(tx, first.id),
+                    testApp.app
+                        .get(NodeAssignmentService)
+                        .end(tx, first.id, SYSTEM_ACTOR),
             });
 
             expect(fulfilledValueOf(second).endedAt).toEqual(clock.now());
@@ -503,12 +540,18 @@ describe('Zone takeover by the chief administrator (e2e)', () => {
                 db: testApp.db,
                 transactions: testApp.app.get(Transactions),
                 first: (tx) =>
-                    testApp.app.get(NodeAssignmentService).end(tx, role.id),
+                    testApp.app
+                        .get(NodeAssignmentService)
+                        .end(tx, role.id, SYSTEM_ACTOR),
                 second: (tx) =>
-                    testApp.app.get(ZoneTakeoverService).takeZone(tx, {
-                        accountId: chiefId,
-                        nodeId: housesZone.id,
-                    }),
+                    testApp.app.get(ZoneTakeoverService).takeZone(
+                        tx,
+                        {
+                            accountId: chiefId,
+                            nodeId: housesZone.id,
+                        },
+                        SYSTEM_ACTOR,
+                    ),
             });
 
             expect(second).toMatchObject({

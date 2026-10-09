@@ -1,0 +1,48 @@
+enum JournalActorKind {
+  account
+  system
+
+  @@map("actor_kind")
+  @@schema("journal")
+}
+
+enum JournalActorRole {
+  chief_administrator
+  administrator
+  chairman
+  owner
+  family_member
+  tenant
+
+  @@map("actor_role")
+  @@schema("journal")
+}
+
+// entries_append_only, entries_rows_append_only, entries_actor_check
+model JournalEntry {
+  id               String            @id @db.Uuid
+  complexId        String            @map("complex_id") @db.Uuid
+  ownerNodeId      String            @map("owner_node_id") @db.Uuid
+  actorAccountId   String?           @map("actor_account_id") @db.Uuid
+  subjectAccountId String?           @map("subject_account_id") @db.Uuid
+  subjectUnitId    String?           @map("subject_unit_id") @db.Uuid
+  action           String
+  actorKind        JournalActorKind  @map("actor_kind")
+  actorRole        JournalActorRole? @map("actor_role")
+  details          Json
+  createdAt        DateTime          @map("created_at") @db.Timestamptz(3)
+
+  complex        Node     @relation("JournalEntryComplex", fields: [complexId], references: [id], onDelete: Restrict)
+  ownerNode      Node     @relation("JournalEntryOwnerNode", fields: [ownerNodeId], references: [id], onDelete: Restrict)
+  actorAccount   Account? @relation("JournalEntryActor", fields: [actorAccountId], references: [id], onDelete: Restrict)
+  subjectAccount Account? @relation("JournalEntrySubject", fields: [subjectAccountId], references: [id], onDelete: Restrict)
+  subjectUnit    Unit?    @relation(fields: [subjectUnitId], references: [id], onDelete: Restrict)
+
+  @@index([complexId, createdAt, id])
+  @@index([ownerNodeId, createdAt, id])
+  @@index([actorAccountId, createdAt, id])
+  @@index([subjectAccountId])
+  @@index([subjectUnitId])
+  @@map("entries")
+  @@schema("journal")
+}

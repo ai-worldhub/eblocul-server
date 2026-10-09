@@ -4,6 +4,7 @@ import {
     type AssignedNode,
     type AssignmentRole,
     assertRolePlace,
+    isAppointedRole,
 } from '../rules/assignment-places.ts';
 
 export type NodeAssignmentSnapshot = {
@@ -87,6 +88,10 @@ export class NodeAssignmentEntity {
 
     isTakeover(): boolean {
         return this.snapshot.role === TAKEOVER;
+    }
+
+    appointedRole(): AppointedRole | null {
+        return isAppointedRole(this.snapshot.role) ? this.snapshot.role : null;
     }
 
     holdsTakeovers(): boolean {

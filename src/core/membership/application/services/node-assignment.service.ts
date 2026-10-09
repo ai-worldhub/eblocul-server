@@ -3,6 +3,7 @@ import { Clock } from '../../../../shared/clock/clock.service.ts';
 import type { Tx } from '../../../../shared/db/tx.ts';
 import { Ids } from '../../../../shared/ids/ids.service.ts';
 import { EventLogger } from '../../../../shared/logging/event-logger.ts';
+import { type JournalActor, JournalService } from '../../../journal/index.ts';
 import { TreeReadingService } from '../../../structure/index.ts';
 import {
     NodeAssignmentEntity,
@@ -15,6 +16,7 @@ import {
     returnsTakenZone,
 } from '../../domain/rules/assignment-places.ts';
 import { NodeAssignmentRepository } from '../../ports/node-assignment.repository.ts';
+import { ROLE_ASSIGNED, ROLE_ENDED } from '../membership.journal-actions.ts';
 import '../membership.log-events.ts';
 import { lockedNodeOrRefuse, nodeOrRefuse } from '../node-lookup.ts';
 import { TakeoverReleaseService } from './takeover-release.service.ts';
@@ -30,6 +32,7 @@ export class NodeAssignmentService {
     constructor(
         private readonly _assignments: NodeAssignmentRepository,
         private readonly _takeovers: TakeoverReleaseService,
+        private readonly _journal: JournalService,
         private readonly _tree: TreeReadingService,
         private readonly _clock: Clock,
         private readonly _ids: Ids,
@@ -39,6 +42,7 @@ export class NodeAssignmentService {
     async assign(
         tx: Tx,
         input: NewAssignment,
+        actor: JournalActor,
     ): Promise<NodeAssignmentSnapshot> {
         const node = await nodeOrRefuse(this._tree, tx, input.nodeId);
         const assignment = NodeAssignmentEntity.appoint({
@@ -56,8 +60,14 @@ export class NodeAssignmentService {
         if (stored !== assignment) {
             return stored.view();
         }
+        await this._journal.record(tx, ROLE_ASSIGNED, {
+            actor,
+            nodeId: node.id,
+            subjectAccountId: input.accountId,
+            details: { assignmentId: assignment.view().id, role: input.role },
+        });
         if (isZoneHolder && returnsTakenZone(holdersBefore)) {
-            await this._takeovers.endOnZone(tx, node.id);
+            await this._takeovers.endOnZone(tx, node.id, actor);
         }
         this._events.info('membership.assigned', {
             assignmentId: assignment.view().id,
@@ -68,9 +78,14 @@ export class NodeAssignmentService {
         return assignment.view();
     }
 
-    async end(tx: Tx, assignmentId: string): Promise<NodeAssignmentSnapshot> {
+    async end(
+        tx: Tx,
+        assignmentId: string,
+        actor: JournalActor,
+    ): Promise<NodeAssignmentSnapshot> {
         const assignment = await this._assignments.lockById(tx, assignmentId);
-        if (assignment === null || assignment.isTakeover()) {
+        const role = assignment?.appointedRole() ?? null;
+        if (assignment === null || role === null) {
             throw new MembershipError(
                 'MEMBERSHIP_ASSIGNMENT_NOT_FOUND',
                 'Assignment is not found',
@@ -83,8 +98,19 @@ export class NodeAssignmentService {
         }
         await this._assignments.save(tx, assignment);
         const ended = assignment.view();
+        await this._journal.record(tx, ROLE_ENDED, {
+            actor,
+            nodeId: ended.nodeId,
+            subjectAccountId: ended.accountId,
+            details: { assignmentId: ended.id, role },
+        });
         if (assignment.holdsTakeovers()) {
-            await this._takeovers.endOfChief(tx, ended.accountId, ended.nodeId);
+            await this._takeovers.endOfChief(
+                tx,
+                ended.accountId,
+                ended.nodeId,
+                actor,
+            );
         }
         this._events.info('membership.assignment_ended', {
             assignmentId: ended.id,

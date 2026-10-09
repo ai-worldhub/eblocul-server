@@ -24,10 +24,12 @@ model Account {
   createdAt       DateTime  @map("created_at") @db.Timestamptz(3)
   phoneVerifiedAt DateTime? @map("phone_verified_at") @db.Timestamptz(3)
 
-  password        AccountPassword?
-  sessions        Session[]
-  unitMemberships UnitMembership[]
-  nodeAssignments NodeAssignment[]
+  password               AccountPassword?
+  sessions               Session[]
+  unitMemberships        UnitMembership[]
+  nodeAssignments        NodeAssignment[]
+  authoredJournalEntries JournalEntry[]   @relation("JournalEntryActor")
+  journalEntriesAbout    JournalEntry[]   @relation("JournalEntrySubject")
 
   @@map("accounts")
   @@schema("identity")

@@ -1,3 +1,4 @@
+import { SYSTEM_ACTOR } from '../../../src/core/journal/index.ts';
 import {
     NodeAssignmentService,
     type NodeAssignmentSnapshot,
@@ -131,11 +132,15 @@ describe('Node assignments (e2e)', () => {
         const { house } = await seedTree(testApp);
         const accountId = await setup.addAccount();
         const assignChairman = (tx: Tx): Promise<NodeAssignmentSnapshot> =>
-            testApp.app.get(NodeAssignmentService).assign(tx, {
-                accountId,
-                nodeId: house.id,
-                role: 'chairman',
-            });
+            testApp.app.get(NodeAssignmentService).assign(
+                tx,
+                {
+                    accountId,
+                    nodeId: house.id,
+                    role: 'chairman',
+                },
+                SYSTEM_ACTOR,
+            );
 
         const { first, second } = await runOverlapped({
             db: testApp.db,

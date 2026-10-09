@@ -1,4 +1,10 @@
 export { MembershipModule } from './membership.module.ts';
+export {
+    ROLE_ASSIGNED,
+    ROLE_ENDED,
+    ZONE_RETURNED,
+    ZONE_TAKEN,
+} from './application/membership.journal-actions.ts';
 export { TestRolesSeed } from './application/seeds/test-roles.seed.ts';
 export {
     type NewAssignment,

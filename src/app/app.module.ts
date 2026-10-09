@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthzModule } from '../core/authz/index.ts';
 import { IdentityModule } from '../core/identity/index.ts';
 import { JobsModule } from '../core/jobs/index.ts';
+import { JournalFeedModule } from '../core/journal/index.ts';
 import { MembershipModule } from '../core/membership/index.ts';
 import { StructureModule } from '../core/structure/index.ts';
 import { ThrottleModule } from '../core/throttle/index.ts';
@@ -12,6 +13,7 @@ import { HealthModule } from '../shared/health/health.module.ts';
 import { IdsModule } from '../shared/ids/ids.module.ts';
 import { AppLoggingModule } from '../shared/logging/logging.module.ts';
 import { ACCESS_ACTIONS } from './access-actions.ts';
+import { JOURNAL_ACTIONS } from './journal-actions.ts';
 
 @Module({
     imports: [
@@ -27,6 +29,7 @@ import { ACCESS_ACTIONS } from './access-actions.ts';
         StructureModule,
         MembershipModule,
         AuthzModule.register(ACCESS_ACTIONS),
+        JournalFeedModule.register(JOURNAL_ACTIONS),
     ],
     controllers: [],
     providers: [],

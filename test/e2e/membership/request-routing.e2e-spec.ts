@@ -1,3 +1,4 @@
+import { SYSTEM_ACTOR } from '../../../src/core/journal/index.ts';
 import {
     NodeAssignmentService,
     type RequestRecipients,
@@ -177,11 +178,15 @@ describe('Who receives the requests of a node (e2e)', () => {
         const zoneAdminId = await setup.addAccount();
 
         const inside = await testApp.app.get(Transactions).run(async (tx) => {
-            await testApp.app.get(NodeAssignmentService).assign(tx, {
-                accountId: zoneAdminId,
-                nodeId: housesZone.id,
-                role: 'administrator',
-            });
+            await testApp.app.get(NodeAssignmentService).assign(
+                tx,
+                {
+                    accountId: zoneAdminId,
+                    nodeId: housesZone.id,
+                    role: 'administrator',
+                },
+                SYSTEM_ACTOR,
+            );
             return testApp.app
                 .get(RequestRoutingService)
                 .recipientsOf(tx, line.id);
