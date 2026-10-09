@@ -77,6 +77,7 @@ export class NodeAssignmentService {
                 { assignmentId },
             );
         }
+        await this._lockHeldZone(tx, assignment.view());
         if (!assignment.end(this._clock.now())) {
             return assignment.view();
         }
@@ -92,6 +93,16 @@ export class NodeAssignmentService {
             role: ended.role,
         });
         return ended;
+    }
+
+    private async _lockHeldZone(
+        tx: Tx,
+        held: NodeAssignmentSnapshot,
+    ): Promise<void> {
+        const node = await nodeOrRefuse(this._tree, tx, held.nodeId);
+        if (holdsZone(held.role, node)) {
+            await lockedNodeOrRefuse(this._tree, tx, node.id);
+        }
     }
 
     private async _holdersOfLockedZone(
