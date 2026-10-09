@@ -27,12 +27,13 @@ model Node {
   address   String?
   createdAt DateTime @map("created_at") @db.Timestamptz(3)
 
-  complex      Node           @relation("NodeComplex", fields: [complexId], references: [id], onDelete: Restrict)
-  complexNodes Node[]         @relation("NodeComplex")
-  ancestors    NodeAncestor[] @relation("NodeAncestorNode")
-  descendants  NodeAncestor[] @relation("NodeAncestorAncestor")
-  units        Unit[]         @relation("UnitNode")
-  complexUnits Unit[]         @relation("UnitComplex")
+  complex      Node             @relation("NodeComplex", fields: [complexId], references: [id], onDelete: Restrict)
+  complexNodes Node[]           @relation("NodeComplex")
+  ancestors    NodeAncestor[]   @relation("NodeAncestorNode")
+  descendants  NodeAncestor[]   @relation("NodeAncestorAncestor")
+  units        Unit[]           @relation("UnitNode")
+  complexUnits Unit[]           @relation("UnitComplex")
+  assignments  NodeAssignment[]
 
   @@index([complexId])
   @@map("nodes")
@@ -62,8 +63,9 @@ model Unit {
   floor     Int?
   createdAt DateTime @map("created_at") @db.Timestamptz(3)
 
-  complex Node @relation("UnitComplex", fields: [complexId], references: [id], onDelete: Restrict)
-  node    Node @relation("UnitNode", fields: [nodeId], references: [id], onDelete: Restrict)
+  complex     Node             @relation("UnitComplex", fields: [complexId], references: [id], onDelete: Restrict)
+  node        Node             @relation("UnitNode", fields: [nodeId], references: [id], onDelete: Restrict)
+  memberships UnitMembership[]
 
   @@index([complexId])
   @@unique([nodeId, number])

@@ -16,6 +16,14 @@ true satisfies [UnitStateRow] extends [UnitSnapshot]
 
 @Injectable()
 export class PrismaUnitRepository implements UnitRepository {
+    async findById(tx: Tx, unitId: string): Promise<UnitEntity | null> {
+        const row = await tx.unit.findUnique({
+            where: { id: unitId },
+            select: UNIT_STATE_SELECT,
+        });
+        return row === null ? null : UnitEntity.restore(row);
+    }
+
     async addOrFind(tx: Tx, unit: UnitEntity): Promise<UnitEntity> {
         const row = unit.view();
         const { count } = await tx.unit.createMany({

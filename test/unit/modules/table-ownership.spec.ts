@@ -6,7 +6,7 @@ const ROOT = fileURLToPath(new URL('../../..', import.meta.url));
 const SCHEMA_DIR = join(ROOT, 'prisma/schema');
 const MODULE_ROOTS = ['src/core', 'src/modules'];
 const SHARED_ROOT = 'src/shared';
-const REFERENCE_VIEWS: string[] = [];
+const REFERENCE_VIEWS: string[] = ['NodeAncestor'];
 
 const MODEL = /^model\s+(\w+)\s*\{/gm;
 const DELEGATE_CALL =

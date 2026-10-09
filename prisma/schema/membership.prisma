@@ -1,0 +1,54 @@
+enum ResidentRole {
+  owner
+  family_member
+  tenant
+
+  @@map("resident_role")
+  @@schema("membership")
+}
+
+enum AssignmentRole {
+  chief_administrator
+  administrator
+  chairman
+  zone_takeover
+
+  @@map("assignment_role")
+  @@schema("membership")
+}
+
+// unit_memberships_active_account_id_unit_id_key
+model UnitMembership {
+  id        String       @id @db.Uuid
+  accountId String       @map("account_id") @db.Uuid
+  unitId    String       @map("unit_id") @db.Uuid
+  role      ResidentRole
+  startedAt DateTime     @map("started_at") @db.Timestamptz(3)
+  endedAt   DateTime?    @map("ended_at") @db.Timestamptz(3)
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  unit    Unit    @relation(fields: [unitId], references: [id], onDelete: Restrict)
+
+  @@index([accountId])
+  @@index([unitId])
+  @@map("unit_memberships")
+  @@schema("membership")
+}
+
+// node_assignments_active_account_id_node_id_role_key
+model NodeAssignment {
+  id        String         @id @db.Uuid
+  accountId String         @map("account_id") @db.Uuid
+  nodeId    String         @map("node_id") @db.Uuid
+  role      AssignmentRole
+  startedAt DateTime       @map("started_at") @db.Timestamptz(3)
+  endedAt   DateTime?      @map("ended_at") @db.Timestamptz(3)
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  node    Node    @relation(fields: [nodeId], references: [id], onDelete: Restrict)
+
+  @@index([accountId])
+  @@index([nodeId])
+  @@map("node_assignments")
+  @@schema("membership")
+}
