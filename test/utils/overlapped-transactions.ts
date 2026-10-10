@@ -30,7 +30,7 @@ const isSomeoneWaitingForLock = async (db: DbService): Promise<boolean> => {
     return (rows[0]?.waiting ?? 0n) > 0n;
 };
 
-const waitUntilBlocked = async (db: DbService): Promise<boolean> => {
+export const waitUntilBlocked = async (db: DbService): Promise<boolean> => {
     const deadline = Date.now() + BLOCK_TIMEOUT_MS;
     while (Date.now() <= deadline) {
         if (await isSomeoneWaitingForLock(db)) {

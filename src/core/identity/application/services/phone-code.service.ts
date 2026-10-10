@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { Clock } from '../../../../shared/clock/clock.service.ts';
-import { DbService } from '../../../../shared/db/db.service.ts';
 import { Transactions } from '../../../../shared/db/transactions.service.ts';
 import type { Tx } from '../../../../shared/db/tx.ts';
 import { Ids } from '../../../../shared/ids/ids.service.ts';
@@ -43,7 +42,6 @@ export class PhoneCodeService {
         private readonly _sender: VerificationCodeSender,
         private readonly _rates: RateLimitService,
         private readonly _jobs: JobQueueService,
-        private readonly _db: DbService,
         private readonly _transactions: Transactions,
         private readonly _clock: Clock,
         private readonly _ids: Ids,
@@ -83,16 +81,20 @@ export class PhoneCodeService {
     async purge(run: JobRun): Promise<void> {
         const now = this._clock.now();
         const phoneCodes = await this._deleteInBatches(run, (limit) =>
-            this._db.phoneCode.deleteMany({
-                where: { expiresAt: { lte: now } },
-                limit,
-            }),
+            this._transactions.run((tx) =>
+                tx.phoneCode.deleteMany({
+                    where: { expiresAt: { lte: now } },
+                    limit,
+                }),
+            ),
         );
         const pendingSignIns = await this._deleteInBatches(run, (limit) =>
-            this._db.pendingSignIn.deleteMany({
-                where: { expiresAt: { lte: now } },
-                limit,
-            }),
+            this._transactions.run((tx) =>
+                tx.pendingSignIn.deleteMany({
+                    where: { expiresAt: { lte: now } },
+                    limit,
+                }),
+            ),
         );
         await this._transactions.run(async (tx) => {
             const isAnyLeft =

@@ -2,6 +2,8 @@ import { Test } from '@nestjs/testing';
 import { WorkerModule } from '../../../src/app/worker.module.ts';
 import { PurgeExpiredHandler } from '../../../src/core/throttle/index.ts';
 import type { JobRun } from '../../../src/core/jobs/index.ts';
+import { CANCEL_GRACE_MS } from '../../../src/core/jobs/domain/time-limit.ts';
+import { WorkerProcess } from '../../../src/core/jobs/ports/worker-process.port.ts';
 import { Clock } from '../../../src/shared/clock/clock.service.ts';
 import {
     ADMIN,
@@ -12,7 +14,13 @@ import {
 } from '../../utils/admin-session.ts';
 import { ClockDouble } from '../../utils/clock.double.ts';
 import { useTestApp } from '../../utils/e2e-setup.ts';
+import {
+    CUT_OFF_BY_STATEMENT_LIMIT,
+    holdLock,
+    type HeldLock,
+} from '../../utils/held-lock.ts';
 import { waitFor } from '../../utils/wait-for.ts';
+import { WorkerProcessDouble } from '../../utils/worker-process.double.ts';
 
 const NOW = new Date('2026-10-08T10:01:30.000Z');
 const FIRST_SLOT = new Date('2026-10-08T10:05:00.000Z');
@@ -20,6 +28,7 @@ const SECOND_SLOT = new Date('2026-10-08T10:10:00.000Z');
 const LOCK_END = new Date('2026-10-08T10:16:30.000Z');
 const PURGE_KIND = 'throttle.purge_expired';
 const MAX_FAILURES = 5;
+const SILENT_BATCH_TEST_TIMEOUT_MS = 20_000;
 
 describe('Purge of expired throttle rows (e2e)', () => {
     const clock = new ClockDouble(NOW);
@@ -49,15 +58,24 @@ describe('Purge of expired throttle rows (e2e)', () => {
         }
     };
 
-    const purge = async (): Promise<void> => {
+    const purge = async (
+        signal: AbortSignal = new AbortController().signal,
+    ): Promise<void> => {
         const run: JobRun = {
             jobId: '00000000-0000-7000-8000-000000000001',
             attempt: 1,
-            signal: new AbortController().signal,
+            signal,
             complete: () => Promise.resolve(),
         };
         await testApp.app.get(PurgeExpiredHandler).handle({}, run);
     };
+
+    const holdBuckets = (): Promise<HeldLock> =>
+        holdLock(
+            testApp.db,
+            (tx) =>
+                tx.$queryRaw`SELECT 1 FROM throttle.rate_buckets FOR UPDATE`,
+        );
 
     const purgeJobs = (): Promise<
         { state: string; availableAt: Date; dedupKey: string | null }[]
@@ -170,4 +188,77 @@ describe('Purge of expired throttle rows (e2e)', () => {
 
         expect(await testApp.db.rateBucket.count()).toBe(0);
     });
+
+    it(
+        'gives up a batch that does not answer, sooner than a cancelled handler has to stop, and removes the rows on the next run',
+        async () => {
+            await knock();
+            clock.advance(SECOND_SLOT.getTime() - NOW.getTime());
+            const lock = await holdBuckets();
+            const cancel = new AbortController();
+            let stoppedAfterMs = Number.POSITIVE_INFINITY;
+
+            try {
+                const purged = purge(cancel.signal);
+                purged.catch(() => undefined);
+                await lock.untilSomeoneWaits();
+                const cancelledAt = Date.now();
+                cancel.abort();
+                await expect(purged).rejects.toMatchObject(
+                    CUT_OFF_BY_STATEMENT_LIMIT,
+                );
+                stoppedAfterMs = Date.now() - cancelledAt;
+            } finally {
+                await lock.release();
+            }
+
+            expect(stoppedAfterMs).toBeLessThan(CANCEL_GRACE_MS);
+            expect(await testApp.db.rateBucket.count()).toBe(1);
+            await purge();
+            expect(await testApp.db.rateBucket.count()).toBe(0);
+        },
+        SILENT_BATCH_TEST_TIMEOUT_MS,
+    );
+
+    it(
+        'costs the job one attempt and leaves the worker running when a batch does not answer',
+        async () => {
+            await knock();
+            clock.advance(SECOND_SLOT.getTime() - NOW.getTime());
+            const process = new WorkerProcessDouble();
+            const worker = await Test.createTestingModule({
+                imports: [WorkerModule],
+            })
+                .overrideProvider(Clock)
+                .useValue(clock)
+                .overrideProvider(WorkerProcess)
+                .useValue(process)
+                .compile();
+            const lock = await holdBuckets();
+
+            await worker.init();
+            try {
+                await waitFor(
+                    async () =>
+                        (await testApp.db.job.count({
+                            where: {
+                                kind: PURGE_KIND,
+                                state: 'waiting',
+                                attempts: 1,
+                            },
+                        })) === 1
+                            ? true
+                            : null,
+                    'the purge job to be put back with one attempt spent',
+                );
+            } finally {
+                await lock.release();
+                await worker.close();
+            }
+
+            expect(process.terminations).toBe(0);
+            expect(await testApp.db.rateBucket.count()).toBe(1);
+        },
+        SILENT_BATCH_TEST_TIMEOUT_MS,
+    );
 });
