@@ -9,10 +9,15 @@ import { EventLogger } from '../../../src/shared/logging/event-logger.ts';
 const POLL_INTERVAL_MAX_MS = 60_000;
 const POLL_INTERVAL_SHORT_MS = 1000;
 
-type Worker = { moduleRef: TestingModule; checkedAt: number[] };
+type Worker = {
+    moduleRef: TestingModule;
+    checkedAt: number[];
+    enforcedAt: number[];
+};
 
 const startWorker = async (pollIntervalMs: number): Promise<Worker> => {
     const checkedAt: number[] = [];
+    const enforcedAt: number[] = [];
     const moduleRef = await Test.createTestingModule({
         providers: [
             JobWorkerService,
@@ -27,6 +32,10 @@ const startWorker = async (pollIntervalMs: number): Promise<Worker> => {
                 provide: JobRunnerService,
                 useValue: {
                     runNext: () => Promise.resolve(false),
+                    enforceTimeLimits: () => {
+                        enforcedAt.push(Date.now());
+                        return Promise.resolve();
+                    },
                     renewLeases: () => {
                         checkedAt.push(Date.now());
                         return Promise.resolve();
@@ -43,7 +52,7 @@ const startWorker = async (pollIntervalMs: number): Promise<Worker> => {
         ],
     }).compile();
     await moduleRef.init();
-    return { moduleRef, checkedAt };
+    return { moduleRef, checkedAt, enforcedAt };
 };
 
 const longestGap = (moments: number[]): number =>
@@ -82,5 +91,17 @@ describe('JobWorkerService', () => {
         await moduleRef.close();
 
         expect(longestGap(checkedAt)).toBe(POLL_INTERVAL_SHORT_MS);
+    });
+
+    it('checks time limits at every lease check', async () => {
+        const { moduleRef, checkedAt, enforcedAt } = await startWorker(
+            POLL_INTERVAL_SHORT_MS,
+        );
+
+        await vi.advanceTimersByTimeAsync(LEASE_MS);
+        await moduleRef.close();
+
+        expect(enforcedAt.length).toBeGreaterThan(1);
+        expect(enforcedAt).toEqual(checkedAt);
     });
 });

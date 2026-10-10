@@ -41,6 +41,15 @@ export const CLASS_RETRY_POLICIES: Record<JobClass, RetryPolicy> = {
     },
 };
 
+export const CLASS_TIME_LIMITS_MS: Record<JobClass, number> = {
+    p0: 10 * SECOND_MS,
+    p1: 30 * SECOND_MS,
+    p2: MINUTE_MS,
+    p3: 5 * MINUTE_MS,
+    p4_short: MINUTE_MS,
+    p4_long: 15 * MINUTE_MS,
+};
+
 const isJobClass = (value: string): value is JobClass =>
     JOB_CLASSES.some((known) => known === value);
 

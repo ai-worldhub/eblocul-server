@@ -5,7 +5,10 @@ export type JobsErrorCode =
     | 'JOBS_CLASS_UNKNOWN'
     | 'JOBS_PAYLOAD_TOO_LARGE'
     | 'JOBS_JOB_NOT_DUE'
-    | 'JOBS_LEASE_LOST';
+    | 'JOBS_LEASE_LOST'
+    | 'JOBS_TIME_LIMIT_INVALID'
+    | 'JOBS_TIME_LIMIT_EXCEEDED'
+    | 'JOBS_WORKER_STOPPING';
 
 export class JobsError extends Error {
     constructor(
