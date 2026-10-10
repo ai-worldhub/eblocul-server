@@ -17,6 +17,7 @@ export const TEST_CHIEF = {
     lastName: 'Chief Administrator',
     phone: '+37360000001',
     email: 'chief@example.com',
+    language: 'ru',
 } as const;
 
 export const TEST_ZONE_ADMIN = {
@@ -24,6 +25,7 @@ export const TEST_ZONE_ADMIN = {
     lastName: 'Zone Administrator',
     phone: '+37360000002',
     email: 'zone-admin@example.com',
+    language: 'ro',
 } as const;
 
 export const TEST_CHAIRMAN = {
@@ -31,6 +33,7 @@ export const TEST_CHAIRMAN = {
     lastName: 'Chairman',
     phone: '+37360000003',
     email: 'chairman@example.com',
+    language: 'ru',
 } as const;
 
 type SeedAccount = {
@@ -38,6 +41,7 @@ type SeedAccount = {
     lastName: string;
     phone: string;
     email: string;
+    language: 'ro' | 'ru';
 };
 
 type SeedPlaces = {

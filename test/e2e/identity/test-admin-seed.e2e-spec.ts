@@ -41,6 +41,7 @@ describe('Seed identity.test_admin (e2e)', () => {
             lastName: TEST_ADMIN.lastName,
             phone: TEST_ADMIN.phone,
             email: TEST_ADMIN.email,
+            language: TEST_ADMIN.language,
             phoneVerifiedAt: null,
         });
         expect(accounts[0]?.password?.hash).not.toContain(SEED_PASSWORD);
