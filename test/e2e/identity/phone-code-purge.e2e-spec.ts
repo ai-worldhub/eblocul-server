@@ -5,6 +5,7 @@ import type { JobRun } from '../../../src/core/jobs/index.ts';
 import { Clock } from '../../../src/shared/clock/clock.service.ts';
 import { ClockDouble } from '../../utils/clock.double.ts';
 import { useTestApp } from '../../utils/e2e-setup.ts';
+import { CUT_OFF_BY_STATEMENT_LIMIT, holdLock } from '../../utils/held-lock.ts';
 import {
     codeDoubles,
     confirmSentCode,
@@ -20,6 +21,7 @@ const SLOT_AFTER_CODE_END = new Date('2026-10-09T10:15:00.000Z');
 const PURGE_KIND = 'identity.purge_phone_codes';
 const OTHER_PHONE = '+37379000002';
 const MINUTE_MS = 60_000;
+const SILENT_BATCH_TEST_TIMEOUT_MS = 20_000;
 
 describe('Purge of expired phone codes (e2e)', () => {
     const clock = new ClockDouble(NOW);
@@ -129,4 +131,30 @@ describe('Purge of expired phone codes (e2e)', () => {
 
         expect(await testApp.db.phoneCode.count()).toBe(0);
     });
+
+    it(
+        'gives up a batch that does not answer and removes the codes on the next run',
+        async () => {
+            await requestCode(testApp, RESIDENT.phone).expect(200);
+            moveTo(SLOT_AFTER_CODE_END);
+            const lock = await holdLock(
+                testApp.db,
+                (tx) =>
+                    tx.$queryRaw`SELECT 1 FROM identity.phone_codes FOR UPDATE`,
+            );
+
+            try {
+                await expect(purge()).rejects.toMatchObject(
+                    CUT_OFF_BY_STATEMENT_LIMIT,
+                );
+            } finally {
+                await lock.release();
+            }
+
+            expect(await testApp.db.phoneCode.count()).toBe(1);
+            await purge();
+            expect(await testApp.db.phoneCode.count()).toBe(0);
+        },
+        SILENT_BATCH_TEST_TIMEOUT_MS,
+    );
 });

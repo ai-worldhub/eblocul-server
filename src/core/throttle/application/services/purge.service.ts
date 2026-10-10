@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { Clock } from '../../../../shared/clock/clock.service.ts';
-import { DbService } from '../../../../shared/db/db.service.ts';
 import { Transactions } from '../../../../shared/db/transactions.service.ts';
 import type { Tx } from '../../../../shared/db/tx.ts';
 import { EventLogger } from '../../../../shared/logging/event-logger.ts';
@@ -13,7 +12,6 @@ import '../throttle.log-events.ts';
 export class PurgeService {
     constructor(
         private readonly _jobs: JobQueueService,
-        private readonly _db: DbService,
         private readonly _transactions: Transactions,
         private readonly _clock: Clock,
         private readonly _events: EventLogger,
@@ -32,16 +30,20 @@ export class PurgeService {
     async purge(run: JobRun): Promise<void> {
         const now = this._clock.now();
         const rateBuckets = await this._deleteInBatches(run, (limit) =>
-            this._db.rateBucket.deleteMany({
-                where: { fullAt: { lte: now } },
-                limit,
-            }),
+            this._transactions.run((tx) =>
+                tx.rateBucket.deleteMany({
+                    where: { fullAt: { lte: now } },
+                    limit,
+                }),
+            ),
         );
         const attemptSeries = await this._deleteInBatches(run, (limit) =>
-            this._db.attemptSeries.deleteMany({
-                where: { expiresAt: { lte: now } },
-                limit,
-            }),
+            this._transactions.run((tx) =>
+                tx.attemptSeries.deleteMany({
+                    where: { expiresAt: { lte: now } },
+                    limit,
+                }),
+            ),
         );
         await this._transactions.run(async (tx) => {
             const isAnyLeft =
