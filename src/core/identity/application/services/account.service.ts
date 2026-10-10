@@ -26,6 +26,7 @@ export type NewAccount = {
     phone: string;
     email: string;
     password: string;
+    language: ProfileLanguage;
 };
 
 export type NewPhoneAccount = {
@@ -141,6 +142,7 @@ export class AccountService {
                 lastName: input.lastName,
                 phone: normalizePhone(input.phone),
                 email: normalizeEmail(input.email),
+                language: input.language,
                 createdAt: now,
                 phoneVerifiedAt: null,
                 password: { create: { hash, changedAt: now } },

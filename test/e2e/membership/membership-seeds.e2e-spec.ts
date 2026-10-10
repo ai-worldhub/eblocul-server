@@ -129,6 +129,23 @@ describe('Seed membership.test_roles (e2e)', () => {
         });
     });
 
+    it('gives every seeded account the language of its profile', async () => {
+        await seed(1);
+
+        const accounts = await testApp.db.account.findMany({
+            where: { email: { not: null } },
+            select: { email: true, language: true },
+            orderBy: { email: 'asc' },
+        });
+
+        expect(accounts).toEqual([
+            { email: 'admin@example.com', language: 'ro' },
+            { email: 'chairman@example.com', language: 'ru' },
+            { email: 'chief@example.com', language: 'ru' },
+            { email: 'zone-admin@example.com', language: 'ro' },
+        ]);
+    });
+
     it('lets every seeded account sign in with the seed password', async () => {
         await seed(1);
 

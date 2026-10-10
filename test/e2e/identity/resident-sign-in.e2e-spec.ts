@@ -582,7 +582,7 @@ describe('Resident sign-in by phone (e2e)', () => {
             await testApp.db.account.findUniqueOrThrow({
                 where: { id: accountId },
             }),
-        ).toMatchObject({ language: null });
+        ).toMatchObject({ language: ADMIN.language });
     });
 
     it('stores the name without the spaces around it', async () => {

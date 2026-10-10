@@ -9,6 +9,7 @@ export const TEST_ADMIN = {
     lastName: 'Administrator',
     phone: '+37360000000',
     email: 'admin@example.com',
+    language: 'ro',
 } as const;
 
 @Injectable()

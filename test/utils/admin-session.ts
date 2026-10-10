@@ -15,6 +15,7 @@ export const ADMIN = {
     phone: '+37360100001',
     email: 'admin@example.com',
     password: 'correct-horse-42',
+    language: 'ro',
 } as const;
 
 export type Credentials = { email: string; password: string };
