@@ -1,4 +1,23 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { parseEnv } from 'node:util';
 import { defineConfig } from 'vitest/config';
+
+const E2E_ENV_FILE = '.env.e2e';
+
+const fromEnvFile = (): string | undefined =>
+    existsSync(E2E_ENV_FILE)
+        ? parseEnv(readFileSync(E2E_ENV_FILE, 'utf8'))['DATABASE_URL']
+        : undefined;
+
+const e2eDatabaseUrl = (): string => {
+    const url = process.env['DATABASE_URL'] ?? fromEnvFile();
+    if (url === undefined || url === '') {
+        throw new Error(
+            `e2e tests need DATABASE_URL: export it or put it into ${E2E_ENV_FILE}`,
+        );
+    }
+    return url;
+};
 
 export default defineConfig({
     test: {
@@ -6,6 +25,7 @@ export default defineConfig({
         include: ['test/e2e/**/*.e2e-spec.ts'],
         env: {
             NODE_ENV: 'e2e',
+            DATABASE_URL: e2eDatabaseUrl(),
             JOBS_WORKER_CONCURRENCY: '2',
             JOBS_POLL_INTERVAL_MS: '20',
             WEB_PANEL_ORIGINS: 'https://panel.eblocul.invalid',
