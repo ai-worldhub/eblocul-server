@@ -19,3 +19,6 @@ export const RESIDENT_CODE_RESEND = {
     burst: 1,
     refillSeconds: CODE_RESEND_SECONDS,
 } as const;
+
+export type CodeOutcome =
+    'signed_in' | 'registration_required' | 'consent_required';

@@ -1,8 +1,6 @@
 import { IdentityError } from '../identity.errors.ts';
-import {
-    CODE_LIFETIME_SECONDS,
-    PENDING_LIFETIME_SECONDS,
-} from '../rules/phone-code.ts';
+import { CODE_LIFETIME_SECONDS } from '../rules/phone-code.ts';
+import type { ProfileLanguage } from '../rules/profile-language.ts';
 
 const SECOND_MS = 1000;
 
@@ -10,16 +8,12 @@ export type PhoneCodeSnapshot = {
     id: string;
     phone: string;
     codeHash: string;
-    pendingTokenHash: string | null;
+    language: ProfileLanguage;
     createdAt: Date;
     expiresAt: Date;
-    confirmedAt: Date | null;
 };
 
 export type CodeVerdict = 'matched' | 'invalid' | 'expired';
-
-const after = (now: Date, seconds: number): Date =>
-    new Date(now.getTime() + seconds * SECOND_MS);
 
 const isSameFingerprint = (left: string, right: string): boolean => {
     let difference = left.length ^ right.length;
@@ -38,29 +32,25 @@ export const codeRefused = (verdict: CodeVerdict): IdentityError =>
           )
         : new IdentityError('IDENTITY_CODE_INVALID', 'Code is incorrect');
 
-export const pendingTokenInvalid = (): IdentityError =>
-    new IdentityError(
-        'IDENTITY_PENDING_TOKEN_INVALID',
-        'Pending token is unknown or has expired, sign in again',
-    );
-
 export class PhoneCodeEntity {
-    private constructor(private snapshot: PhoneCodeSnapshot) {}
+    private constructor(private readonly snapshot: PhoneCodeSnapshot) {}
 
     static issue(input: {
         id: string;
         phone: string;
         codeHash: string;
+        language: ProfileLanguage;
         now: Date;
     }): PhoneCodeEntity {
         return new PhoneCodeEntity({
             id: input.id,
             phone: input.phone,
             codeHash: input.codeHash,
-            pendingTokenHash: null,
+            language: input.language,
             createdAt: input.now,
-            expiresAt: after(input.now, CODE_LIFETIME_SECONDS),
-            confirmedAt: null,
+            expiresAt: new Date(
+                input.now.getTime() + CODE_LIFETIME_SECONDS * SECOND_MS,
+            ),
         });
     }
 
@@ -73,9 +63,6 @@ export class PhoneCodeEntity {
     }
 
     verdictOn(codeHash: string, now: Date): CodeVerdict {
-        if (this.snapshot.confirmedAt !== null) {
-            return 'invalid';
-        }
         if (now.getTime() >= this.snapshot.expiresAt.getTime()) {
             return 'expired';
         }
@@ -84,37 +71,10 @@ export class PhoneCodeEntity {
             : 'invalid';
     }
 
-    confirm(codeHash: string, now: Date): void {
+    assertMatches(codeHash: string, now: Date): void {
         const verdict = this.verdictOn(codeHash, now);
         if (verdict !== 'matched') {
             throw codeRefused(verdict);
         }
-        this.snapshot = { ...this.snapshot, confirmedAt: now };
-    }
-
-    keepPending(pendingTokenHash: string, now: Date): void {
-        if (
-            this.snapshot.confirmedAt === null ||
-            this.snapshot.pendingTokenHash !== null
-        ) {
-            throw pendingTokenInvalid();
-        }
-        this.snapshot = {
-            ...this.snapshot,
-            pendingTokenHash,
-            expiresAt: after(now, PENDING_LIFETIME_SECONDS),
-        };
-    }
-
-    redeem(now: Date): Date {
-        const { confirmedAt, pendingTokenHash, expiresAt } = this.snapshot;
-        if (
-            confirmedAt === null ||
-            pendingTokenHash === null ||
-            now.getTime() >= expiresAt.getTime()
-        ) {
-            throw pendingTokenInvalid();
-        }
-        return confirmedAt;
     }
 }

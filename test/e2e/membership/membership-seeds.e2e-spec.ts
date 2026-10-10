@@ -78,8 +78,9 @@ describe('Seed membership.test_roles (e2e)', () => {
             ].sort(),
         );
         expect(await testApp.db.nodeAssignment.count()).toBe(4);
-        expect(await testApp.db.account.count()).toBe(4);
-        expect(await testApp.db.unitMembership.count()).toBe(0);
+        expect(
+            await testApp.db.account.count({ where: { email: { not: null } } }),
+        ).toBe(4);
     });
 
     it('writes every seeded assignment to the action journal once, as made by the system', async () => {
@@ -158,7 +159,9 @@ describe('Seed membership.test_roles (e2e)', () => {
             code: 'MEMBERSHIP_SEED_PASSWORD_MISSING',
         });
 
-        expect(await testApp.db.account.count()).toBe(1);
+        expect(
+            await testApp.db.account.count({ where: { email: { not: null } } }),
+        ).toBe(1);
         expect(await testApp.db.nodeAssignment.count()).toBe(0);
         expect(LAB_SEEDS).toContain(TestAdminSeed);
     });

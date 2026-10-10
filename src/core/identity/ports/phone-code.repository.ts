@@ -11,11 +11,6 @@ export abstract class PhoneCodeRepository {
         tx: Tx,
         phone: string,
     ): Promise<PhoneCodeEntity | null>;
-    abstract lockByPendingTokenHash(
-        tx: Tx,
-        pendingTokenHash: string,
-    ): Promise<PhoneCodeEntity | null>;
-    abstract save(tx: Tx, code: PhoneCodeEntity): Promise<void>;
     abstract remove(tx: Tx, code: PhoneCodeEntity): Promise<void>;
     abstract removeByPhone(tx: Tx, phone: string): Promise<void>;
 }

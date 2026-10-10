@@ -1,0 +1,55 @@
+import type {
+    CodeDelivery,
+    VerificationCodeSender,
+} from '../../src/core/identity/ports/verification-code-sender.port.ts';
+import type { VerificationCodeSource } from '../../src/core/identity/ports/verification-code-source.port.ts';
+
+const CODE_LENGTH = 6;
+
+export class VerificationCodeSourceDouble implements VerificationCodeSource {
+    private _drawn = 0;
+
+    next(): string {
+        this._drawn += 1;
+        return String(this._drawn).padStart(CODE_LENGTH, '1');
+    }
+
+    reset(): void {
+        this._drawn = 0;
+    }
+}
+
+export class VerificationCodeSenderDouble implements VerificationCodeSender {
+    private _sent: CodeDelivery[] = [];
+    private _isNextFailing = false;
+
+    send(delivery: CodeDelivery): Promise<void> {
+        if (this._isNextFailing) {
+            this._isNextFailing = false;
+            return Promise.reject(new Error('The SMS channel is down'));
+        }
+        this._sent.push(delivery);
+        return Promise.resolve();
+    }
+
+    failNext(): void {
+        this._isNextFailing = true;
+    }
+
+    sent(): CodeDelivery[] {
+        return [...this._sent];
+    }
+
+    lastCodeFor(phone: string): string {
+        const code = this._sent.findLast((sent) => sent.phone === phone)?.code;
+        if (code === undefined) {
+            throw new Error('No code was sent to this phone');
+        }
+        return code;
+    }
+
+    clear(): void {
+        this._sent = [];
+        this._isNextFailing = false;
+    }
+}

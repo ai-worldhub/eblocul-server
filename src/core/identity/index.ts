@@ -3,6 +3,7 @@ export {
     TEST_ADMIN,
     TestAdminSeed,
 } from './application/seeds/test-admin.seed.ts';
+export { PurgePhoneCodesHandler } from './application/handlers/purge-phone-codes.handler.ts';
 export { AccountService } from './application/services/account.service.ts';
 export type {
     SessionApplication,

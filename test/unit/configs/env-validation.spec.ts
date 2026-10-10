@@ -9,6 +9,7 @@ const VALID = {
     MAIL_FROM: 'no-reply@eblocul.invalid',
     TRUSTED_PROXY_HOPS: '0',
     THROTTLE_KEY_SECRET: 'unit-secret-not-a-real-key-0123456789',
+    LEGAL_CONSENT_VERSION: 'unit-version-1',
 };
 
 describe('validateEnv', () => {
@@ -105,5 +106,56 @@ describe('validateEnv', () => {
         expect(() =>
             validateEnv({ ...VALID, THROTTLE_KEY_SECRET: 'too-short' }),
         ).toThrow('THROTTLE_KEY_SECRET');
+    });
+
+    it('refuses to start without the version of the Policy and the Terms', () => {
+        const { LEGAL_CONSENT_VERSION: _omitted, ...withoutVersion } = VALID;
+
+        expect(() => validateEnv(withoutVersion)).toThrow(
+            'LEGAL_CONSENT_VERSION',
+        );
+        for (const version of ['', 'With Spaces', 'UPPER', '-leading-dash']) {
+            expect(() =>
+                validateEnv({ ...VALID, LEGAL_CONSENT_VERSION: version }),
+            ).toThrow('LEGAL_CONSENT_VERSION');
+        }
+        expect(
+            validateEnv({ ...VALID, LEGAL_CONSENT_VERSION: '2026-10.v2' })
+                .LEGAL_CONSENT_VERSION,
+        ).toBe('2026-10.v2');
+    });
+
+    it('accepts the fixed SMS code only in the lab', () => {
+        expect(
+            validateEnv({ ...VALID, LAB_FIXED_SMS_CODE: '000000' })
+                .LAB_FIXED_SMS_CODE,
+        ).toBe('000000');
+        for (const environment of ['production', 'e2e']) {
+            expect(() =>
+                validateEnv({
+                    ...VALID,
+                    NODE_ENV: environment,
+                    LAB_FIXED_SMS_CODE: '000000',
+                }),
+            ).toThrow(
+                'LAB_FIXED_SMS_CODE: is allowed only when NODE_ENV is lab',
+            );
+        }
+        expect(() =>
+            validateEnv({ ...VALID, LAB_FIXED_SMS_CODE: '12345' }),
+        ).toThrow('LAB_FIXED_SMS_CODE');
+    });
+
+    it('reads an empty fixed SMS code as not set', () => {
+        expect(() =>
+            validateEnv({
+                ...VALID,
+                NODE_ENV: 'production',
+                LAB_FIXED_SMS_CODE: '',
+            }),
+        ).not.toThrow();
+        expect(() =>
+            validateEnv({ ...VALID, LAB_FIXED_SMS_CODE: '' }),
+        ).not.toThrow();
     });
 });

@@ -15,14 +15,23 @@ enum SessionTransport {
   @@schema("identity")
 }
 
+enum ProfileLanguage {
+  ro
+  ru
+
+  @@map("profile_language")
+  @@schema("identity")
+}
+
 model Account {
-  id              String    @id @db.Uuid
-  firstName       String    @map("first_name")
-  lastName        String    @map("last_name")
-  phone           String    @unique
-  email           String?   @unique
-  createdAt       DateTime  @map("created_at") @db.Timestamptz(3)
-  phoneVerifiedAt DateTime? @map("phone_verified_at") @db.Timestamptz(3)
+  id              String           @id @db.Uuid
+  firstName       String           @map("first_name")
+  lastName        String           @map("last_name")
+  phone           String           @unique
+  email           String?          @unique
+  language        ProfileLanguage?
+  createdAt       DateTime         @map("created_at") @db.Timestamptz(3)
+  phoneVerifiedAt DateTime?        @map("phone_verified_at") @db.Timestamptz(3)
 
   password               AccountPassword?
   consents               Consent[]
@@ -79,15 +88,27 @@ model Consent {
 }
 
 model PhoneCode {
-  id               String    @id @db.Uuid
-  phone            String    @unique
-  codeHash         String    @map("code_hash")
-  pendingTokenHash String?   @unique @map("pending_token_hash")
-  createdAt        DateTime  @map("created_at") @db.Timestamptz(3)
-  expiresAt        DateTime  @map("expires_at") @db.Timestamptz(3)
-  confirmedAt      DateTime? @map("confirmed_at") @db.Timestamptz(3)
+  id        String          @id @db.Uuid
+  phone     String          @unique
+  codeHash  String          @map("code_hash")
+  language  ProfileLanguage
+  createdAt DateTime        @map("created_at") @db.Timestamptz(3)
+  expiresAt DateTime        @map("expires_at") @db.Timestamptz(3)
 
   @@index([expiresAt])
   @@map("phone_codes")
+  @@schema("identity")
+}
+
+model PendingSignIn {
+  id          String          @id @db.Uuid
+  phone       String          @unique
+  tokenHash   String          @unique @map("token_hash")
+  language    ProfileLanguage
+  confirmedAt DateTime        @map("confirmed_at") @db.Timestamptz(3)
+  expiresAt   DateTime        @map("expires_at") @db.Timestamptz(3)
+
+  @@index([expiresAt])
+  @@map("pending_sign_ins")
   @@schema("identity")
 }
