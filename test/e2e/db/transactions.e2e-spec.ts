@@ -1,3 +1,5 @@
+import { ConfigService } from '@nestjs/config';
+import { DbService } from '../../../src/shared/db/db.service.ts';
 import { Ids } from '../../../src/shared/ids/ids.service.ts';
 import { Transactions } from '../../../src/shared/db/transactions.service.ts';
 import { useTestApp } from '../../utils/e2e-setup.ts';
@@ -5,6 +7,8 @@ import { CUT_OFF_BY_STATEMENT_LIMIT, holdLock } from '../../utils/held-lock.ts';
 import { accountRow } from '../../factories/identity.factory.ts';
 
 const STATEMENT_LIMIT = '5s';
+const STRICTER_LIMIT = '4321ms';
+const LOOSER_LIMIT = '6s';
 const CUT_OFF_TEST_TIMEOUT_MS = 15_000;
 
 type Limit = { statementTimeout: string };
@@ -63,6 +67,41 @@ describe('Transactions (e2e)', () => {
         expect(inside).toBe(STATEMENT_LIMIT);
         expect(outside).not.toBe(STATEMENT_LIMIT);
         expect(await limitOf(testApp.db)).toBe(outside);
+    });
+
+    describe('when the address of the database sets its own limit', () => {
+        const insideWith = async (
+            limit: string,
+        ): Promise<string | undefined> => {
+            const url = new URL(
+                testApp.app
+                    .get(ConfigService)
+                    .getOrThrow<string>('DATABASE_URL'),
+            );
+            url.searchParams.set('options', `-c statement_timeout=${limit}`);
+            const db = new DbService(
+                new ConfigService({ DATABASE_URL: url.toString() }),
+            );
+            await db.onModuleInit();
+            try {
+                return await new Transactions(db).run(async (tx) => {
+                    const rows = await tx.$queryRaw<Limit[]>`
+                        SELECT current_setting('statement_timeout') AS "statementTimeout"
+                    `;
+                    return rows[0]?.statementTimeout;
+                });
+            } finally {
+                await db.$disconnect();
+            }
+        };
+
+        it('keeps a limit that is stricter than its own', async () => {
+            expect(await insideWith(STRICTER_LIMIT)).toBe(STRICTER_LIMIT);
+        });
+
+        it('replaces a limit that is looser than its own', async () => {
+            expect(await insideWith(LOOSER_LIMIT)).toBe(STATEMENT_LIMIT);
+        });
     });
 
     it(

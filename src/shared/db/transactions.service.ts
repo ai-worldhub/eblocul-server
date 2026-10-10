@@ -15,6 +15,12 @@ export class Transactions {
             async (tx) => {
                 await tx.$queryRaw`
                     SELECT set_config('statement_timeout', ${STATEMENT_TIMEOUT}, true)
+                    FROM pg_settings
+                    WHERE name = 'statement_timeout'
+                      AND (
+                          setting::integer = 0
+                          OR setting::integer > ${STATEMENT_TIMEOUT}::integer
+                      )
                 `;
                 return work(tx);
             },
