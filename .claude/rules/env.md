@@ -3,6 +3,7 @@ paths:
     - 'src/shared/configs/**'
     - '.env.example'
     - 'vitest.config.e2e.ts'
+    - 'src/*/*/*.module.ts'
 ---
 
 # Переменные окружения и секреты
